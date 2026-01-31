@@ -125,7 +125,7 @@ export default function PelatihanPemberdayaan() {
       {/* --- HEADER --- */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 bg-white p-8 rounded-[40px] shadow-xl border-b-[8px] border-indigo-800 gap-4">
         <div>
-          <h1 className="text-4xl font-black text-indigo-950 italic uppercase tracking-tighter">🛠️ PELATIHAN IKM</h1>
+          <h1 className="text-4xl font-black text-indigo-700 italic uppercase tracking-tighter">🛠️ PELATIHAN PEMBERDAYAAN INDUSTRI (IKM Juara)</h1>
           <div className="flex gap-3 mt-4">
             <button onClick={() => setTab("aktif")} className={`text-[10px] font-black uppercase px-6 py-2.5 rounded-full border-2 transition-all ${tab === 'aktif' ? 'bg-indigo-700 text-white border-indigo-800' : 'bg-white text-slate-400 border-slate-100 hover:border-indigo-300'}`}>Daftar Aktif</button>
             <button onClick={() => setTab("trash")} className={`text-[10px] font-black uppercase px-6 py-2.5 rounded-full border-2 transition-all ${tab === 'trash' ? 'bg-rose-600 text-white border-rose-700' : 'bg-white text-slate-400 border-slate-100 hover:border-rose-300'}`}>Recycle Bin 🗑️</button>
