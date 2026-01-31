@@ -19,8 +19,11 @@ export default function PenelusuranIKM() {
     
     setLoading(true)
     setProfile(null)
+    setLayanan([])
+    setPelatihan([])
+
     try {
-      // 1. Cari Data Personal IKM
+      // 1. Cari Data Personal IKM (Berdasarkan NIB, NIK, atau Nama)
       const { data: dataIKM, error: errIKM } = await supabase
         .from("ikm_binaan")
         .select("*")
@@ -29,41 +32,28 @@ export default function PenelusuranIKM() {
 
       if (errIKM) throw errIKM
       if (!dataIKM) {
-        alert("Data tidak ditemukan.")
+        alert("Data IKM tidak ditemukan. Pastikan NIB/NIK/Nama sudah benar.")
         setLoading(false)
         return
       }
 
       setProfile(dataIKM)
 
-      // 2. Ambil Data Layanan (Halal, Merek, TKDN, dll)
-// Ganti bagian pengambilan data_layanan dengan kode ini:
-const { data: resLayanan, error: errLayanan } = await supabase
-  .from("semua_layanan_ikm") 
-  .select("*")
-  .eq("ikm_id", dataIKM.id)
-  .order("tahun", { ascending: false });
+      // 2. Ambil Data Layanan Langsung dari Tabel layanan_ikm_juara
+      const { data: resLayanan, error: errLayanan } = await supabase
+        .from("layanan_ikm_juara") 
+        .select("*")
+        .eq("ikm_id", dataIKM.id)
+        .order("tahun", { ascending: false });
 
-if (errLayanan) {
-  console.error("Gagal sinkronisasi layanan:", errLayanan.message);
-  setLayanan([]);
-} else {
-  // Mapping agar sesuai dengan variabel yang digunakan di tabel UI Anda
-  const dataTerpadu = resLayanan.map(item => ({
-    jenis_layanan: item.jenis,
-    no_sertifikat: item.dokumen, // Mengambil 'no_pendaftaran' atau 'nama_produk' dari View
-    tahun_fasilitasi: item.tahun,
-    status: item.status
-  }));
-  
-  setLayanan(dataTerpadu);
-}
+      if (!errLayanan && resLayanan) {
+        setLayanan(resLayanan)
+      }
 
-      // 3. Ambil Riwayat Pelatihan (Melalui Tabel Relasi Peserta)
-      const { data: resPelatihan } = await supabase
+      // 3. Ambil Riwayat Pelatihan & Pemberdayaan
+      const { data: resPelatihan, error: errPelatihan } = await supabase
         .from("peserta_pelatihan")
         .select(`
-          id,
           kegiatan_pelatihan (
             nama_kegiatan,
             waktu_pelaksanaan,
@@ -73,10 +63,16 @@ if (errLayanan) {
         `)
         .eq("ikm_id", dataIKM.id)
 
-      setPelatihan(resPelatihan || [])
-      setLoading(false)
+      if (!errPelatihan && resPelatihan) {
+        // Flatting data agar lebih mudah diakses
+        const formattedPelatihan = resPelatihan.map((p: any) => p.kegiatan_pelatihan)
+        setPelatihan(formattedPelatihan)
+      }
+
     } catch (error) {
       console.error("Error fetching data:", error)
+      alert("Terjadi kesalahan saat mengambil data.")
+    } finally {
       setLoading(false)
     }
   }
@@ -89,6 +85,7 @@ if (errLayanan) {
   }
 
   const exportExcel = () => {
+    if (!profile) return
     const wb = XLSX.utils.book_new()
     
     // Sheet 1: Profil & Layanan
@@ -102,11 +99,11 @@ if (errLayanan) {
       ["Alamat", profile.alamat],
       [""],
       ["RIWAYAT LAYANAN IKM JUARA"],
-      ["No", "Jenis Layanan", "No Sertifikat / Dokumen", "Tahun", "Status"]
+      ["No", "Jenis Layanan", "Detail/No. Dokumen", "Tahun", "Status"]
     ]
 
     layanan.forEach((l, i) => {
-      dataGabungan.push([i + 1, l.jenis_layanan, l.no_sertifikat, l.tahun_fasilitasi, l.status])
+      dataGabungan.push([i + 1, l.jenis_layanan, l.no_pendaftaran || l.nama_produk || "-", l.tahun, l.status])
     })
 
     const ws1 = XLSX.utils.aoa_to_sheet(dataGabungan)
@@ -118,8 +115,7 @@ if (errLayanan) {
       ["No", "Nama Kegiatan", "Waktu Pelaksanaan", "Tahun", "Deskripsi"]
     ]
     pelatihan.forEach((p, i) => {
-      const k = p.kegiatan_pelatihan
-      dataPelatihan.push([i + 1, k.nama_kegiatan, k.waktu_pelaksanaan, k.tahun_pelaksanaan, k.deskripsi_kegiatan])
+      dataPelatihan.push([i + 1, p.nama_kegiatan, p.waktu_pelaksanaan, p.tahun_pelaksanaan, p.deskripsi_kegiatan])
     })
     const ws2 = XLSX.utils.aoa_to_sheet(dataPelatihan)
     XLSX.utils.book_append_sheet(wb, ws2, "Riwayat Pelatihan")
@@ -128,14 +124,12 @@ if (errLayanan) {
   }
 
   const exportPDF = () => {
+    if (!profile) return
     const doc = new jsPDF()
     
     doc.setFont("helvetica", "bold")
     doc.setFontSize(16)
     doc.text("PROFIL LENGKAP IKM BINAAN", 105, 15, { align: "center" })
-    
-    doc.setFontSize(10)
-    doc.text(`Dicetak pada: ${new Date().toLocaleDateString('id-ID')}`, 190, 22, { align: "right" })
 
     // Data Personal
     autoTable(doc, {
@@ -158,8 +152,8 @@ if (errLayanan) {
     doc.text("RIWAYAT LAYANAN IKM JUARA", 14, finalY1)
     autoTable(doc, {
       startY: finalY1 + 2,
-      head: [['No', 'Layanan', 'No. Dokumen', 'Tahun', 'Status']],
-      body: layanan.map((l, i) => [i + 1, l.jenis_layanan, l.no_sertifikat, l.tahun_fasilitasi, l.status]),
+      head: [['No', 'Jenis Layanan', 'Detail Dokumen', 'Tahun', 'Status']],
+      body: layanan.map((l, i) => [i + 1, l.jenis_layanan, l.no_pendaftaran || l.nama_produk || "-", l.tahun, l.status]),
       headStyles: { fillColor: [49, 46, 129] }
     })
 
@@ -169,12 +163,7 @@ if (errLayanan) {
     autoTable(doc, {
       startY: finalY2 + 2,
       head: [['No', 'Nama Kegiatan', 'Waktu Pelaksanaan', 'Tahun']],
-      body: pelatihan.map((p, i) => [
-        i + 1, 
-        p.kegiatan_pelatihan.nama_kegiatan, 
-        p.kegiatan_pelatihan.waktu_pelaksanaan,
-        p.kegiatan_pelatihan.tahun_pelaksanaan
-      ]),
+      body: pelatihan.map((p, i) => [i + 1, p.nama_kegiatan, p.waktu_pelaksanaan, p.tahun_pelaksanaan]),
       headStyles: { fillColor: [5, 150, 105] }
     })
 
@@ -194,7 +183,7 @@ if (errLayanan) {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Input Nama Lengkap / No. NIB / No. NIK..."
-              className="flex-1 p-5 rounded-2xl font-bold text-lg outline-none border-4 border-transparent focus:border-indigo-400 shadow-2xl"
+              className="flex-1 p-5 rounded-2xl font-bold text-lg outline-none border-4 border-transparent focus:border-indigo-400 shadow-2xl bg-indigo-900/50 text-white placeholder:text-indigo-300/50"
             />
             <div className="flex gap-3">
               <button type="submit" className="bg-indigo-500 text-white px-10 py-5 rounded-2xl font-black uppercase hover:bg-indigo-400 transition-all shadow-lg active:scale-95">TELUSURI</button>
@@ -254,7 +243,7 @@ if (errLayanan) {
                         <thead>
                           <tr className="text-[10px] font-black text-slate-400 uppercase border-b-2 border-slate-50">
                             <th className="pb-4">Jenis Layanan</th>
-                            <th className="pb-4">No. Dokumen</th>
+                            <th className="pb-4">Detail/No. Dokumen</th>
                             <th className="pb-4 text-center">Tahun</th>
                             <th className="pb-4 text-right">Status</th>
                           </tr>
@@ -263,8 +252,8 @@ if (errLayanan) {
                           {layanan.map((l, i) => (
                             <tr key={i} className="group hover:bg-slate-50 transition-colors">
                               <td className="py-4 font-black text-indigo-900 uppercase text-sm">{l.jenis_layanan}</td>
-                              <td className="py-4 font-mono text-[11px] text-slate-500">{l.no_sertifikat || "-"}</td>
-                              <td className="py-4 text-center font-bold text-slate-500">{l.tahun_fasilitasi}</td>
+                              <td className="py-4 font-mono text-[11px] text-slate-500">{l.no_pendaftaran || l.nama_produk || "-"}</td>
+                              <td className="py-4 text-center font-bold text-slate-500">{l.tahun}</td>
                               <td className="py-4 text-right">
                                 <span className="px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full font-black text-[9px] uppercase border border-emerald-100">
                                   {l.status}
@@ -276,7 +265,7 @@ if (errLayanan) {
                       </table>
                     </div>
                   ) : (
-                    <div className="text-center py-10 italic text-slate-400 font-bold">Belum ada riwayat layanan yang terdaftar di sistem.</div>
+                    <div className="text-center py-10 italic text-slate-400 font-bold">Belum ada riwayat layanan yang terdaftar.</div>
                   )}
                 </div>
               </div>
@@ -293,13 +282,13 @@ if (errLayanan) {
                       {pelatihan.map((p: any, i: number) => (
                         <div key={i} className="p-6 bg-slate-50 rounded-[30px] border-l-[8px] border-emerald-500 hover:shadow-md transition-all">
                           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 mb-3">
-                            <h4 className="font-black text-indigo-950 uppercase text-sm">{p.kegiatan_pelatihan.nama_kegiatan}</h4>
+                            <h4 className="font-black text-indigo-950 uppercase text-sm">{p.nama_kegiatan}</h4>
                             <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full uppercase">
-                              📅 {p.kegiatan_pelatihan.waktu_pelaksanaan} ({p.kegiatan_pelatihan.tahun_pelaksanaan})
+                              📅 {p.waktu_pelaksanaan} ({p.tahun_pelaksanaan})
                             </span>
                           </div>
                           <p className="text-[11px] text-slate-600 leading-relaxed font-medium italic bg-white p-3 rounded-xl border border-slate-100">
-                            "{p.kegiatan_pelatihan.deskripsi_kegiatan || 'Tidak ada deskripsi detail untuk kegiatan ini.'}"
+                            "{p.deskripsi_kegiatan || 'Tidak ada deskripsi detail untuk kegiatan ini.'}"
                           </p>
                         </div>
                       ))}
