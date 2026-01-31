@@ -65,18 +65,27 @@ export default function IKMPage() {
     }
   }
 
+  // UPDATED: Fungsi Soft Delete dengan pengecekan error yang benar
   const handleSoftDelete = async (id: number) => {
-    if (!confirm("Pindahkan ke Recycle Bin?")) return;
+    if (!confirm("Pindahkan data ini ke Recycle Bin?")) return;
 
+    // Menjalankan perintah update ke database
     const { error } = await supabase
       .from("ikm_binaan")
-      .update({ is_deleted: true, deleted_at: new Date().toISOString() })
+      .update({ 
+        is_deleted: true, 
+        deleted_at: new Date().toISOString() 
+      })
       .eq("id", id);
 
     if (error) {
-      alert("Gagal: " + error.message);
+      // Menampilkan error asli jika gagal (misal: Error 401 Unauthorized)
+      console.error("Gagal memindahkan:", error.message);
+      alert("Gagal memindahkan data: " + error.message);
     } else {
+      // Jika benar-benar berhasil tanpa error
       alert("Data berhasil dipindahkan ke Sampah! 🗑️");
+      // Memaksa tabel refresh agar baris data langsung hilang
       await fetchData(); 
     }
   };
@@ -87,13 +96,23 @@ export default function IKMPage() {
       .update({ is_deleted: false, deleted_at: null })
       .eq("id", id)
     
-    if (!error) { alert("Data dipulihkan! ✅"); await fetchData(); }
+    if (!error) { 
+      alert("Data dipulihkan! ✅"); 
+      await fetchData(); 
+    } else {
+      alert("Gagal memulihkan: " + error.message);
+    }
   }
 
   const handlePermanentDelete = async (id: number) => {
-    if (!confirm("Hapus permanen?")) return
+    if (!confirm("Hapus permanen? Tindakan ini tidak bisa dibatalkan.")) return
     const { error } = await supabase.from("ikm_binaan").delete().eq("id", id)
-    if (!error) { alert("Terhapus permanen! 💀"); await fetchData(); }
+    if (!error) { 
+      alert("Terhapus permanen! 💀"); 
+      await fetchData(); 
+    } else {
+      alert("Gagal menghapus: " + error.message);
+    }
   }
 
   const handleSubmit = async () => {
@@ -107,7 +126,7 @@ export default function IKMPage() {
     }
   };
 
-  // ================= RENDER =================
+  // ================= RENDER LOGIC =================
   const filteredData = data.filter((item) =>
     Object.values(item).join(" ").toLowerCase().includes(search.toLowerCase())
   )
@@ -137,6 +156,17 @@ export default function IKMPage() {
         </div>
       )}
 
+      {/* SEARCH BAR */}
+      <div className="mb-6">
+        <input 
+          type="text" 
+          placeholder="Cari data..." 
+          value={search} 
+          onChange={(e) => setSearch(e.target.value)} 
+          className="w-full p-4 rounded-2xl border-none shadow-md outline-none focus:ring-2 focus:ring-blue-400" 
+        />
+      </div>
+
       <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
         <table className="w-full">
           <thead className={activeTab === "main" ? "bg-blue-600 text-white" : "bg-red-600 text-white"}>
@@ -159,13 +189,13 @@ export default function IKMPage() {
                 <td className="p-4 flex gap-2 justify-center">
                   {activeTab === "main" ? (
                     <>
-                      <button onClick={() => setEditData(item)} className="p-2 bg-amber-100 text-amber-700 rounded-lg">Edit</button>
-                      <button onClick={() => handleSoftDelete(item.id)} className="p-2 bg-red-100 text-red-600 rounded-lg">Hapus</button>
+                      <button onClick={() => setEditData(item)} className="p-2 bg-amber-100 text-amber-700 rounded-lg font-bold">Edit</button>
+                      <button onClick={() => handleSoftDelete(item.id)} className="p-2 bg-red-100 text-red-600 rounded-lg font-bold">Hapus</button>
                     </>
                   ) : (
                     <>
-                      <button onClick={() => handleRestore(item.id)} className="p-2 bg-green-100 text-green-700 rounded-lg">Pulihkan</button>
-                      <button onClick={() => handlePermanentDelete(item.id)} className="p-2 bg-red-600 text-white rounded-lg">Hapus Permanen</button>
+                      <button onClick={() => handleRestore(item.id)} className="p-2 bg-green-100 text-green-700 rounded-lg font-bold">Pulihkan</button>
+                      <button onClick={() => handlePermanentDelete(item.id)} className="p-2 bg-red-600 text-white rounded-lg font-bold">Hapus Permanen</button>
                     </>
                   )}
                 </td>
@@ -189,7 +219,7 @@ export default function IKMPage() {
             </div>
             <div className="flex justify-end gap-3 mt-8">
               <button onClick={() => setEditData(null)} className="font-bold text-gray-400">Batal</button>
-              <button onClick={handleUpdate} className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold">Simpan</button>
+              <button onClick={handleUpdate} className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold shadow-lg">Simpan</button>
             </div>
           </div>
         </div>
