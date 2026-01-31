@@ -25,15 +25,15 @@ export default function IKMPage() {
 
   // ================= FETCH DATA (Berdasarkan Tab) =================
   const fetchData = async () => {
-    const isDeletedStatus = activeTab === "recycle";
-    const { data, error } = await supabase
-      .from("ikm_binaan")
-      .select("*")
-      .eq("is_deleted", isDeletedStatus)
-      .order("id", { ascending: true })
+  const isDeletedStatus = activeTab === "recycle"; // true jika di tab sampah, false jika di tab utama
+  const { data: res, error } = await supabase
+    .from("ikm_binaan")
+    .select("*")
+    .eq("is_deleted", isDeletedStatus) // INI KUNCINYA: Memisahkan data aktif & sampah
+    .order("id", { ascending: false });
 
-    if (!error) setData(data || [])
-  }
+  if (!error) setData(res || []);
+};
 
   useEffect(() => { 
     fetchData() 
@@ -72,17 +72,21 @@ export default function IKMPage() {
 
   // Soft Delete (Pindah ke Recycle Bin)
   const handleSoftDelete = async (id: number) => {
-    if (!confirm("Pindahkan data ke Recycle Bin?")) return
-    const { error } = await supabase
-      .from("ikm_binaan")
-      .update({ is_deleted: true, deleted_at: new Date().toISOString() })
-      .eq("id", id)
+  if (!confirm("Pindahkan ke Recycle Bin?")) return;
+  
+  const { error } = await supabase
+    .from("ikm_binaan")
+    .update({ 
+      is_deleted: true, 
+      deleted_at: new Date().toISOString() 
+    })
+    .eq("id", id);
 
-    if (!error) {
-      alert("Data dipindahkan ke Sampah");
-      fetchData();
-    }
+  if (!error) {
+    alert("Data pindah ke Sampah! 🗑️");
+    await fetchData(); // Menarik data terbaru agar baris tersebut langsung hilang
   }
+};
 
   // Restore (Kembalikan dari Recycle Bin)
   const handleRestore = async (id: number) => {
@@ -108,23 +112,26 @@ export default function IKMPage() {
   }
 
   // Fix Update Function
-  const handleUpdate = async () => {
-    if (!editData) return
-    const { id, created_at, is_deleted, deleted_at, ...updatedFields } = editData
-    
-    const { error } = await supabase
-      .from("ikm_binaan")
-      .update(updatedFields)
-      .eq("id", id)
+const handleUpdate = async () => {
+  if (!editData) return
+  
+  // Membersihkan data agar tidak error di Supabase
+  const { id, created_at, is_deleted, deleted_at, ...payload } = editData
 
-    if (!error) {
-      alert("Data berhasil diperbarui");
-      setEditData(null);
-      fetchData();
-    } else {
-      alert("Gagal update: " + error.message);
-    }
+  const { error } = await supabase
+    .from("ikm_binaan")
+    .update(payload)
+    .eq("id", id)
+
+  if (!error) {
+    alert("Data berhasil diperbarui! ✅")
+    setEditData(null)
+    // WAJIB PAKAI AWAIT DI SINI
+    await fetchData() 
+  } else {
+    alert("Gagal update: " + error.message)
   }
+}
 
   // ================= EXCEL LOGIC =================
   const downloadTemplate = () => {
