@@ -39,25 +39,17 @@ export default function PenelusuranIKM() {
 
       setProfile(dataIKM)
 
-// Cari bagian "2. Ambil Data Layanan" dan ganti dengan ini:
+// 2. Ambil Data Layanan Detail dari layanan_ikm_juara
 const { data: resLayanan, error: errLayanan } = await supabase
-  .from("layanan_ikm_juara") // Sesuaikan dengan nama tabel di gambar 8
-  .select("*")
+  .from("layanan_ikm_juara") 
+  .select("jenis_layanan, no_pendaftaran, tahun, status, link_utama, link_tambahan") // Pastikan kolom ini sesuai database
   .eq("ikm_id", dataIKM.id)
-  .order("id", { ascending: true });
+  .order("tahun", { ascending: false });
 
 if (errLayanan) {
   console.error("Gagal sinkronisasi layanan:", errLayanan.message);
-  setLayanan([]);
 } else {
-  // Mapping agar variabel sesuai dengan UI tabel Anda
-  const dataTampil = resLayanan.map(item => ({
-    jenis_layanan: item.jenis_layanan,
-    no_sertifikat: item.no_pendaftaran || item.nama_produk || "-", 
-    tahun_fasilitasi: item.tahun || 2025,
-    status: item.status
-  }));
-  setLayanan(dataTampil);
+  setLayanan(resLayanan || []);
 }
 
       // 3. Ambil Riwayat Pelatihan & Pemberdayaan
@@ -157,16 +149,6 @@ if (errLayanan) {
       headStyles: { fillColor: [49, 46, 129] }
     })
 
-    // Tabel Layanan
-    const finalY1 = (doc as any).lastAutoTable.finalY + 10
-    doc.text("RIWAYAT LAYANAN IKM JUARA", 14, finalY1)
-    autoTable(doc, {
-      startY: finalY1 + 2,
-      head: [['No', 'Jenis Layanan', 'Detail Dokumen', 'Tahun', 'Status']],
-      body: layanan.map((l, i) => [i + 1, l.jenis_layanan, l.no_pendaftaran || l.nama_produk || "-", l.tahun, l.status]),
-      headStyles: { fillColor: [49, 46, 129] }
-    })
-
     // Tabel Pelatihan
     const finalY2 = (doc as any).lastAutoTable.finalY + 10
     doc.text("RIWAYAT PELATIHAN & PEMBERDAYAAN", 14, finalY2)
@@ -241,47 +223,8 @@ if (errLayanan) {
 
             {/* DATA LAYANAN & PELATIHAN */}
             <div className="lg:col-span-2 space-y-8">
-              {/* LAYANAN IKM JUARA */}
-              <div className="bg-white rounded-[40px] shadow-xl overflow-hidden border-2 border-slate-100">
-                <div className="bg-indigo-900 p-6 flex items-center gap-3">
-                  <span className="text-xl">🏆</span>
-                  <h3 className="text-white font-black italic uppercase tracking-widest text-sm">Layanan IKM Juara</h3>
-                </div>
-                <div className="p-6">
-                  {layanan.length > 0 ? (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left">
-                        <thead>
-                          <tr className="text-[10px] font-black text-slate-400 uppercase border-b-2 border-slate-50">
-                            <th className="pb-4">Jenis Layanan</th>
-                            <th className="pb-4">Detail/No. Dokumen</th>
-                            <th className="pb-4 text-center">Tahun</th>
-                            <th className="pb-4 text-right">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50">
-                          {layanan.map((l, i) => (
-                            <tr key={i} className="group hover:bg-slate-50 transition-colors">
-                              <td className="py-4 font-black text-indigo-900 uppercase text-sm">{l.jenis_layanan}</td>
-                              <td className="py-4 font-mono text-[11px] text-slate-500">{l.no_pendaftaran || l.nama_produk || "-"}</td>
-                              <td className="py-4 text-center font-bold text-slate-500">{l.tahun}</td>
-                              <td className="py-4 text-right">
-                                <span className="px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full font-black text-[9px] uppercase border border-emerald-100">
-                                  {l.status}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <div className="text-center py-10 italic text-slate-400 font-bold">Belum ada riwayat layanan yang terdaftar.</div>
-                  )}
-                </div>
-              </div>
 
-{/* LAYANAN IKM JUARA - DETAIL MODE */}
+{/* RINCIAN LAYANAN IKM JUARA */}
 <div className="bg-white rounded-[40px] shadow-xl overflow-hidden border-2 border-slate-100">
   <div className="bg-indigo-900 p-6 flex items-center gap-3">
     <span className="text-xl">🏆</span>
@@ -293,70 +236,64 @@ if (errLayanan) {
       layanan.map((l, i) => (
         <div key={i} className="group p-6 rounded-[32px] border-2 border-slate-50 bg-slate-50/50 hover:bg-white hover:border-indigo-100 hover:shadow-lg transition-all">
           
-          {/* Header Kartu: Jenis Layanan & Status */}
+          {/* Header: Jenis Layanan & Status */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
             <div>
-              <h4 className="font-black text-indigo-900 uppercase text-lg tracking-tight">
-                {l.jenis_layanan}
-              </h4>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                Fasilitasi Tahun {l.tahun || '-'}
-              </p>
+              <h4 className="font-black text-indigo-900 uppercase text-lg tracking-tight">{l.jenis_layanan}</h4>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fasilitasi Tahun {l.tahun || '-'}</p>
             </div>
             <span className={`px-4 py-1.5 rounded-full font-black text-[10px] uppercase border ${
-              l.status === 'SELESAI' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 
-              l.status === 'PROSES' ? 'bg-amber-100 text-amber-700 border-amber-200' : 
-              'bg-rose-100 text-rose-700 border-rose-200'
+              l.status?.toUpperCase() === 'SELESAI' || l.status?.toUpperCase() === 'TELAH DIDAFTAR' 
+                ? 'bg-emerald-100 text-emerald-700 border-emerald-200' 
+                : 'bg-amber-100 text-amber-700 border-amber-200'
             }`}>
               {l.status || 'DALAM PROSES'}
             </span>
           </div>
 
-          {/* Grid Detail: Nomor & Tahun */}
+          {/* Grid Data Sesuai Form Admin */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-              <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Nomor Pendaftaran / Nama Produk</p>
-              <p className="text-sm font-bold text-slate-700 font-mono">
-                {l.no_pendaftaran || l.nama_produk || "Informasi belum tersedia"}
-              </p>
+              <p className="text-[9px] font-black text-slate-400 uppercase mb-1">No. Dokumen / Pendaftaran</p>
+              <p className="text-sm font-bold text-slate-700 font-mono">{l.no_pendaftaran || "-"}</p>
             </div>
             <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-              <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Tahun Fasilitasi</p>
+              <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Tahun</p>
               <p className="text-sm font-bold text-slate-700">{l.tahun || "-"}</p>
             </div>
           </div>
 
-          {/* Akses Link Google Drive */}
+          {/* Tombol Link Google Drive Sesuai Form Admin */}
           <div className="flex flex-wrap gap-3">
-            {/* Tombol Bukti Daftar */}
-            {l.link_utama ? (
+            {/* Link Utama */}
+            {l.link_utama && l.link_utama !== "-" ? (
               <a 
                 href={l.link_utama} 
                 target="_blank" 
                 rel="noopener noreferrer" 
                 className="flex-1 md:flex-none text-center bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase hover:bg-indigo-700 shadow-md transition-all flex items-center justify-center gap-2"
               >
-                📂 BUKTI DAFTAR (G-DRIVE)
+                📂 LINK UTAMA (G-DRIVE)
               </a>
             ) : (
               <div className="flex-1 md:flex-none text-center bg-slate-100 text-slate-400 px-6 py-3 rounded-2xl font-black text-[10px] uppercase border border-dashed border-slate-200">
-                🚫 Bukti Belum Diunggah
+                🚫 Link Utama Kosong
               </div>
             )}
 
-            {/* Tombol Sertifikat */}
-            {l.link_tambahan ? (
+            {/* Link Tambahan / Bukti */}
+            {l.link_tambahan && l.link_tambahan !== "-" ? (
               <a 
                 href={l.link_tambahan} 
                 target="_blank" 
                 rel="noopener noreferrer" 
                 className="flex-1 md:flex-none text-center bg-emerald-500 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase hover:bg-emerald-600 shadow-md transition-all flex items-center justify-center gap-2"
               >
-                📜 LIHAT SERTIFIKAT (G-DRIVE)
+                📜 LINK TAMBAHAN / BUKTI
               </a>
             ) : (
               <div className="flex-1 md:flex-none text-center bg-slate-100 text-slate-400 px-6 py-3 rounded-2xl font-black text-[10px] uppercase border border-dashed border-slate-200">
-                🚫 Sertifikat Belum Ada
+                🚫 Bukti Belum Ada
               </div>
             )}
           </div>
@@ -364,7 +301,7 @@ if (errLayanan) {
       ))
     ) : (
       <div className="text-center py-10 italic text-slate-400 font-bold uppercase text-xs tracking-widest">
-        Data layanan IKM Juara tidak ditemukan.
+        Belum ada riwayat layanan yang terdaftar.
       </div>
     )}
   </div>
