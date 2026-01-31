@@ -26,17 +26,6 @@ export default function IKMPage() {
   // ================= FETCH DATA (DIPERBAIKI) =================
   const fetchData = async () => {
     const isDeletedStatus = activeTab === "recycle";
-    const { data: res, error } = await supabase
-      .from("ikm_binaan")
-      .select("*")
-      .eq("is_deleted", isDeletedStatus)
-      .order("id", { ascending: false }) // Data terbaru di atas
-
-    if (error) {
-      console.error("Error fetching:", error.message)
-    } else {
-      setData(res || [])
-    }
   }
 
   useEffect(() => { 
