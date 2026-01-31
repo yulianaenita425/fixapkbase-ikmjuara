@@ -6,6 +6,15 @@ import * as XLSX from "xlsx"
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
 
+function DataDetail({ label, value, color = "text-slate-700" }: { label: string, value: string, color?: string }) {
+  return (
+    <div className="border-b border-slate-50 pb-3">
+      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">{label}</label>
+      <div className={`text-sm font-bold break-words leading-tight ${color}`}>{value || "-"}</div>
+    </div>
+  )
+}
+
 export default function PenelusuranIKM() {
   const [searchQuery, setSearchQuery] = useState("")
   const [loading, setLoading] = useState(false)
@@ -233,112 +242,109 @@ if (errLayanan) {
   <div className="p-6 space-y-6">
     {layanan.length > 0 ? (
       layanan.map((l, i) => (
-        <div key={i} className="group p-6 rounded-[32px] border-2 border-slate-50 bg-slate-50/50 hover:bg-white hover:border-indigo-100 hover:shadow-lg transition-all">
+        <div key={i} className="group p-6 rounded-[32px] border-2 border-slate-50 bg-slate-50/50 hover:bg-white hover:border-indigo-100 transition-all mb-4">
           
-          {/* Header: Jenis Layanan & Status */}
+          {/* JUDUL LAYANAN & STATUS */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
             <div>
-              <h4 className="font-black text-indigo-900 uppercase text-lg tracking-tight">{l.jenis_layanan}</h4>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fasilitasi Tahun {l.tahun || '-'}</p>
+              <h4 className="font-black text-indigo-900 uppercase text-lg tracking-tight">
+                {l.jenis_layanan}
+              </h4>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                Tahun Fasilitasi: {l.tahun || '-'}
+              </p>
             </div>
             <span className={`px-4 py-1.5 rounded-full font-black text-[10px] uppercase border ${
               l.status?.toLowerCase().includes('didaftar') || l.status?.toLowerCase().includes('selesai')
                 ? 'bg-emerald-100 text-emerald-700 border-emerald-200' 
-                : l.status?.toLowerCase().includes('ditolak')
-                ? 'bg-rose-100 text-rose-700 border-rose-200'
                 : 'bg-amber-100 text-amber-700 border-amber-200'
             }`}>
               {l.status || 'PROSES'}
             </span>
           </div>
 
-          {/* Grid Detail: Sesuai Form Admin */}
+          {/* DETAIL DINAMIS */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-              <p className="text-[9px] font-black text-slate-400 uppercase mb-1">No. Dokumen / Pendaftaran</p>
-              <p className="text-sm font-bold text-slate-700 font-mono">{l.no_pendaftaran || "-"}</p>
+              <p className="text-[9px] font-black text-slate-400 uppercase mb-1">
+                {l.jenis_layanan.includes('Uji Nilai Gizi') ? 'Nama Produk' : 'No. Dokumen / Pendaftaran'}
+              </p>
+              <p className="text-sm font-bold text-slate-700 font-mono">
+                {l.no_pendaftaran || "-"}
+              </p>
             </div>
             <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-              <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Tahun Fasilitasi</p>
+              <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Tahun</p>
               <p className="text-sm font-bold text-slate-700">{l.tahun || "-"}</p>
             </div>
           </div>
 
-          {/* Akses Link G-Drive */}
+          {/* LINK GOOGLE DRIVE */}
           <div className="flex flex-wrap gap-3">
             {l.link_utama && l.link_utama !== "-" ? (
               <a href={l.link_utama} target="_blank" rel="noopener noreferrer" 
-                className="flex-1 md:flex-none text-center bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase hover:bg-indigo-700 shadow-md transition-all flex items-center justify-center gap-2">
+                className="flex-1 md:flex-none text-center bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase hover:bg-indigo-700 flex items-center justify-center gap-2">
                 📂 LINK UTAMA (G-DRIVE)
               </a>
             ) : (
               <div className="flex-1 md:flex-none text-center bg-slate-100 text-slate-400 px-6 py-3 rounded-2xl font-black text-[10px] uppercase border border-dashed border-slate-200">
-                🚫 Link Utama Kosong
+                🚫 Link Kosong
               </div>
             )}
 
             {l.link_tambahan && l.link_tambahan !== "-" ? (
               <a href={l.link_tambahan} target="_blank" rel="noopener noreferrer" 
-                className="flex-1 md:flex-none text-center bg-emerald-500 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase hover:bg-emerald-600 shadow-md transition-all flex items-center justify-center gap-2">
+                className="flex-1 md:flex-none text-center bg-emerald-500 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase hover:bg-emerald-600 flex items-center justify-center gap-2">
                 📜 LINK TAMBAHAN / BUKTI
               </a>
             ) : (
               <div className="flex-1 md:flex-none text-center bg-slate-100 text-slate-400 px-6 py-3 rounded-2xl font-black text-[10px] uppercase border border-dashed border-slate-200">
-                🚫 Bukti Belum Ada
+                🚫 Bukti Kosong
               </div>
             )}
           </div>
         </div>
       ))
     ) : (
-      <div className="text-center py-10 italic text-slate-400 font-bold uppercase text-xs tracking-widest">
-        Data layanan IKM belum tersedia.
+      <div className="text-center py-10 italic text-slate-400 font-bold uppercase text-xs">
+        Belum ada riwayat layanan yang terdaftar.
       </div>
     )}
   </div>
-</div>
 
-              {/* RIWAYAT PELATIHAN */}
-              <div className="bg-white rounded-[40px] shadow-xl overflow-hidden border-2 border-slate-100">
-                <div className="bg-emerald-600 p-6 flex items-center gap-3">
-                  <span className="text-xl">🎓</span>
-                  <h3 className="text-white font-black italic uppercase tracking-widest text-sm">Riwayat Pelatihan & Pemberdayaan</h3>
-                </div>
-                <div className="p-6">
-                  {pelatihan.length > 0 ? (
-                    <div className="space-y-4">
-                      {pelatihan.map((p: any, i: number) => (
-                        <div key={i} className="p-6 bg-slate-50 rounded-[30px] border-l-[8px] border-emerald-500 hover:shadow-md transition-all">
-                          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 mb-3">
-                            <h4 className="font-black text-indigo-950 uppercase text-sm">{p.nama_kegiatan}</h4>
-                            <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full uppercase">
-                              📅 {p.waktu_pelaksanaan} ({p.tahun_pelaksanaan})
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-slate-600 leading-relaxed font-medium italic bg-white p-3 rounded-xl border border-slate-100">
-                            "{p.deskripsi_kegiatan || 'Tidak ada deskripsi detail untuk kegiatan ini.'}"
-                          </p>
-                        </div>
-                      ))}
+          {/* RIWAYAT PELATIHAN */}
+          <div className="bg-white rounded-[40px] shadow-xl overflow-hidden border-2 border-slate-100">
+            <div className="bg-emerald-600 p-6 flex items-center gap-3">
+              <span className="text-xl">🎓</span>
+              <h3 className="text-white font-black italic uppercase tracking-widest text-sm">Riwayat Pelatihan & Pemberdayaan</h3>
+            </div>
+            <div className="p-6">
+              {pelatihan.length > 0 ? (
+                <div className="space-y-4">
+                  {pelatihan.map((p: any, i: number) => (
+                    <div key={i} className="p-6 bg-slate-50 rounded-[30px] border-l-[8px] border-emerald-500 hover:shadow-md transition-all">
+                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 mb-3">
+                        <h4 className="font-black text-indigo-950 uppercase text-sm">{p.nama_kegiatan}</h4>
+                        <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full uppercase">
+                          📅 {p.waktu_pelaksanaan} ({p.tahun_pelaksanaan})
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-600 leading-relaxed font-medium italic bg-white p-3 rounded-xl border border-slate-100">
+                        "{p.deskripsi_kegiatan || 'Tidak ada deskripsi detail untuk kegiatan ini.'}"
+                      </p>
                     </div>
-                  ) : (
-                    <div className="text-center py-10 italic text-slate-400 font-bold">Belum ada riwayat pelatihan yang diikuti.</div>
-                  )}
+                  ))}
                 </div>
-              </div>
+              ) : (
+                <div className="text-center py-10 italic text-slate-400 font-bold">Belum ada riwayat pelatihan yang diikuti.</div>
+              )}
+            </div>
+          </div>
+        </div>
             </div>
           </div>
         </div>
       )}
-    </div>
-  )
-}
-
-function DataDetail({ label, value, color = "text-slate-700" }: { label: string, value: string, color?: string }) {
-  return (
-    <div className="border-b border-slate-50 pb-3">
-      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">{label}</label>
-      <div className={`text-sm font-bold break-words leading-tight ${color}`}>{value || "-"}</div>
     </div>
   )
 }
