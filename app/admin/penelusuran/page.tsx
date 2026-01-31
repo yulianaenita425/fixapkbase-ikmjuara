@@ -39,16 +39,26 @@ export default function PenelusuranIKM() {
 
       setProfile(dataIKM)
 
-      // 2. Ambil Data Layanan Langsung dari Tabel layanan_ikm_juara
-      const { data: resLayanan, error: errLayanan } = await supabase
-        .from("layanan_ikm_juara") 
-        .select("*")
-        .eq("ikm_id", dataIKM.id)
-        .order("tahun", { ascending: false });
+// Cari bagian "2. Ambil Data Layanan" dan ganti dengan ini:
+const { data: resLayanan, error: errLayanan } = await supabase
+  .from("layanan_ikm_juara") // Sesuaikan dengan nama tabel di gambar 8
+  .select("*")
+  .eq("ikm_id", dataIKM.id)
+  .order("id", { ascending: true });
 
-      if (!errLayanan && resLayanan) {
-        setLayanan(resLayanan)
-      }
+if (errLayanan) {
+  console.error("Gagal sinkronisasi layanan:", errLayanan.message);
+  setLayanan([]);
+} else {
+  // Mapping agar variabel sesuai dengan UI tabel Anda
+  const dataTampil = resLayanan.map(item => ({
+    jenis_layanan: item.jenis_layanan,
+    no_sertifikat: item.no_pendaftaran || item.nama_produk || "-", 
+    tahun_fasilitasi: item.tahun || 2025,
+    status: item.status
+  }));
+  setLayanan(dataTampil);
+}
 
       // 3. Ambil Riwayat Pelatihan & Pemberdayaan
       const { data: resPelatihan, error: errPelatihan } = await supabase
@@ -179,12 +189,13 @@ export default function PenelusuranIKM() {
             <span className="text-4xl">🔎</span> PENELUSURAN DATA IKM
           </h1>
           <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4">
-            <input 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Input Nama Lengkap / No. NIB / No. NIK..."
-              className="flex-1 p-5 rounded-2xl font-bold text-lg outline-none border-4 border-transparent focus:border-indigo-400 shadow-2xl bg-indigo-900/50 text-white placeholder:text-indigo-300/50"
-            />
+<input 
+  value={searchQuery}
+  onChange={(e) => setSearchQuery(e.target.value)}
+  placeholder="Input Nama Lengkap / No. NIB / No. NIK..."
+  // text-white adalah kunci agar tulisan berwarna putih
+  className="flex-1 p-5 rounded-2xl font-bold text-lg outline-none border-4 border-transparent focus:border-indigo-400 shadow-2xl bg-indigo-900/50 text-white placeholder:text-indigo-300/50"
+/>
             <div className="flex gap-3">
               <button type="submit" className="bg-indigo-500 text-white px-10 py-5 rounded-2xl font-black uppercase hover:bg-indigo-400 transition-all shadow-lg active:scale-95">TELUSURI</button>
               <button type="button" onClick={handleReset} className="bg-rose-600 text-white px-8 py-5 rounded-2xl font-black uppercase hover:bg-rose-500 transition-all shadow-lg active:scale-95">RESET</button>
