@@ -223,7 +223,6 @@ if (errLayanan) {
 
             {/* DATA LAYANAN & PELATIHAN */}
             <div className="lg:col-span-2 space-y-8">
-
 {/* RINCIAN LAYANAN IKM JUARA */}
 <div className="bg-white rounded-[40px] shadow-xl overflow-hidden border-2 border-slate-100">
   <div className="bg-indigo-900 p-6 flex items-center gap-3">
@@ -243,36 +242,33 @@ if (errLayanan) {
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fasilitasi Tahun {l.tahun || '-'}</p>
             </div>
             <span className={`px-4 py-1.5 rounded-full font-black text-[10px] uppercase border ${
-              l.status?.toUpperCase() === 'SELESAI' || l.status?.toUpperCase() === 'TELAH DIDAFTAR' 
+              l.status?.toLowerCase().includes('didaftar') || l.status?.toLowerCase().includes('selesai')
                 ? 'bg-emerald-100 text-emerald-700 border-emerald-200' 
+                : l.status?.toLowerCase().includes('ditolak')
+                ? 'bg-rose-100 text-rose-700 border-rose-200'
                 : 'bg-amber-100 text-amber-700 border-amber-200'
             }`}>
-              {l.status || 'DALAM PROSES'}
+              {l.status || 'PROSES'}
             </span>
           </div>
 
-          {/* Grid Data Sesuai Form Admin */}
+          {/* Grid Detail: Sesuai Form Admin */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
               <p className="text-[9px] font-black text-slate-400 uppercase mb-1">No. Dokumen / Pendaftaran</p>
               <p className="text-sm font-bold text-slate-700 font-mono">{l.no_pendaftaran || "-"}</p>
             </div>
             <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-              <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Tahun</p>
+              <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Tahun Fasilitasi</p>
               <p className="text-sm font-bold text-slate-700">{l.tahun || "-"}</p>
             </div>
           </div>
 
-          {/* Tombol Link Google Drive Sesuai Form Admin */}
+          {/* Akses Link G-Drive */}
           <div className="flex flex-wrap gap-3">
-            {/* Link Utama */}
             {l.link_utama && l.link_utama !== "-" ? (
-              <a 
-                href={l.link_utama} 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="flex-1 md:flex-none text-center bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase hover:bg-indigo-700 shadow-md transition-all flex items-center justify-center gap-2"
-              >
+              <a href={l.link_utama} target="_blank" rel="noopener noreferrer" 
+                className="flex-1 md:flex-none text-center bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase hover:bg-indigo-700 shadow-md transition-all flex items-center justify-center gap-2">
                 📂 LINK UTAMA (G-DRIVE)
               </a>
             ) : (
@@ -281,14 +277,9 @@ if (errLayanan) {
               </div>
             )}
 
-            {/* Link Tambahan / Bukti */}
             {l.link_tambahan && l.link_tambahan !== "-" ? (
-              <a 
-                href={l.link_tambahan} 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="flex-1 md:flex-none text-center bg-emerald-500 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase hover:bg-emerald-600 shadow-md transition-all flex items-center justify-center gap-2"
-              >
+              <a href={l.link_tambahan} target="_blank" rel="noopener noreferrer" 
+                className="flex-1 md:flex-none text-center bg-emerald-500 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase hover:bg-emerald-600 shadow-md transition-all flex items-center justify-center gap-2">
                 📜 LINK TAMBAHAN / BUKTI
               </a>
             ) : (
@@ -301,7 +292,7 @@ if (errLayanan) {
       ))
     ) : (
       <div className="text-center py-10 italic text-slate-400 font-bold uppercase text-xs tracking-widest">
-        Belum ada riwayat layanan yang terdaftar.
+        Data layanan IKM belum tersedia.
       </div>
     )}
   </div>
