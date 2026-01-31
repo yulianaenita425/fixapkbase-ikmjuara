@@ -7,7 +7,7 @@ import * as XLSX from "xlsx"
 export default function PelatihanPemberdayaan() {
   const [kegiatan, setKegiatan] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<"aktif" | "trash">("aktif") // State Tab Manajemen
+  const [tab, setTab] = useState<"aktif" | "trash">("aktif")
   const [showModalKegiatan, setShowModalKegiatan] = useState(false)
   const [showModalPeserta, setShowModalPeserta] = useState<{show: boolean, data: any}>({show: false, data: null})
   const [editData, setEditData] = useState<any>(null)
@@ -75,7 +75,11 @@ export default function PelatihanPemberdayaan() {
 
   // --- LOGIKA PESERTA ---
   const fetchPeserta = async (kegiatanId: string) => {
-    const { data } = await supabase.from("peserta_pelatihan").select(`*, ikm_binaan(*)`).eq("kegiatan_id", kegiatanId)
+    // Memastikan relasi ikm_binaan mengambil semua kolom yang dibutuhkan
+    const { data } = await supabase
+      .from("peserta_pelatihan")
+      .select(`*, ikm_binaan(*)`)
+      .eq("kegiatan_id", kegiatanId)
     setPesertaKegiatan(data || [])
   }
 
@@ -98,19 +102,35 @@ export default function PelatihanPemberdayaan() {
     }
   }
 
-  const exportExcelPeserta = (namaKegiatan: string) => {
-    if(pesertaKegiatan.length === 0) return alert("Belum ada data peserta")
+  // --- UPDATE FUNGSI EXPORT EXCEL (KOLOM LENGKAP) ---
+  const exportExcelPeserta = (itemKegiatan: any) => {
+    if(pesertaKegiatan.length === 0) return alert("Belum ada data peserta untuk di-export")
+    
     const dataExport = pesertaKegiatan.map((p, i) => ({
       "No": i + 1,
-      "Nama IKM": p.ikm_binaan?.nama_lengkap || "-",
+      "Nama Kegiatan": itemKegiatan.nama_kegiatan,
+      "Pelaksanaan": itemKegiatan.waktu_pelaksanaan || "-",
+      "Tahun Pelaksanaan": itemKegiatan.tahun_pelaksanaan,
+      "Nama Peserta": p.ikm_binaan?.nama_lengkap || "-",
       "NIB": p.ikm_binaan?.no_nib || "-",
       "NIK": p.ikm_binaan?.nik || "-",
-      "Nama Kegiatan": namaKegiatan
+      "Nama Usaha": p.ikm_binaan?.nama_usaha || "-",
+      "Alamat": p.ikm_binaan?.alamat || "-",
+      "Nomor HP": p.ikm_binaan?.no_hp || "-"
     }))
+
     const ws = XLSX.utils.json_to_sheet(dataExport)
+    
+    // Mengatur lebar kolom agar rapi
+    const wscols = [
+      {wch: 5}, {wch: 30}, {wch: 20}, {wch: 15}, {wch: 25}, 
+      {wch: 20}, {wch: 20}, {wch: 25}, {wch: 40}, {wch: 15}
+    ]
+    ws['!cols'] = wscols
+
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, "Daftar Peserta")
-    XLSX.writeFile(wb, `PESERTA_${namaKegiatan.replace(/ /g, "_")}.xlsx`)
+    XLSX.writeFile(wb, `DATA_PESERTA_${itemKegiatan.nama_kegiatan.replace(/ /g, "_")}.xlsx`)
   }
 
   return (
@@ -129,7 +149,7 @@ export default function PelatihanPemberdayaan() {
         )}
       </div>
 
-      {/* --- TABLE --- */}
+      {/* --- TABLE UTAMA --- */}
       <div className="bg-white rounded-[40px] shadow-2xl overflow-hidden border-2 border-slate-300">
         <table className="w-full text-left">
           <thead className={tab === "trash" ? "bg-rose-950 text-white" : "bg-indigo-950 text-white"}>
@@ -239,7 +259,8 @@ export default function PelatihanPemberdayaan() {
                 <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest">{showModalPeserta.data?.nama_kegiatan}</p>
               </div>
               <div className="flex gap-3">
-                <button onClick={() => exportExcelPeserta(showModalPeserta.data?.nama_kegiatan)} className="bg-white text-emerald-700 px-6 py-2 rounded-xl font-black text-[10px] uppercase shadow-md hover:bg-emerald-50 transition-all">📊 EXPORT .XLSX</button>
+                {/* Melewatkan data kegiatan lengkap ke fungsi export */}
+                <button onClick={() => exportExcelPeserta(showModalPeserta.data)} className="bg-white text-emerald-700 px-6 py-2 rounded-xl font-black text-[10px] uppercase shadow-md hover:bg-emerald-50 transition-all">📊 EXPORT .XLSX</button>
                 <button onClick={() => setShowModalPeserta({show: false, data: null})} className="font-black text-2xl hover:text-rose-200 transition-colors">✕</button>
               </div>
             </div>
@@ -274,9 +295,18 @@ export default function PelatihanPemberdayaan() {
                     {pesertaKegiatan.map((p, i) => (
                       <tr key={p.id} className="hover:bg-slate-50/50">
                         <td className="p-4 text-center font-bold text-slate-300 text-xs">{i + 1}</td>
+                        {/* UPDATE TAMPILAN DATA PESERTA (Nama Usaha, Alamat, HP) */}
                         <td className="p-4">
-                          <div className="font-black text-slate-700 text-sm uppercase">{p.ikm_binaan?.nama_lengkap}</div>
-                          <div className="text-[10px] font-bold text-slate-400 uppercase italic">NIB: {p.ikm_binaan?.no_nib} | NIK: {p.ikm_binaan?.nik}</div>
+                          <div className="font-black text-slate-700 text-sm uppercase leading-tight">{p.ikm_binaan?.nama_lengkap}</div>
+                          <div className="text-[11px] font-bold text-indigo-600 uppercase mt-1">
+                            🏪 {p.ikm_binaan?.nama_usaha || "Nama Usaha Belum Diisi"}
+                          </div>
+                          <div className="text-[10px] font-medium text-slate-500 italic mt-0.5">
+                            📍 {p.ikm_binaan?.alamat || "-"} | 📞 {p.ikm_binaan?.no_hp || "-"}
+                          </div>
+                          <div className="text-[10px] font-bold text-slate-400 uppercase mt-1">
+                            NIB: {p.ikm_binaan?.no_nib} | NIK: {p.ikm_binaan?.nik}
+                          </div>
                         </td>
                         <td className="p-4 text-center">
                           <button onClick={async () => { if(confirm("Hapus peserta ini?")) { await supabase.from("peserta_pelatihan").delete().eq("id", p.id); fetchPeserta(showModalPeserta.data.id); fetchKegiatan(); } }} className="text-rose-500 px-4 py-1.5 rounded-lg font-black text-[9px] uppercase border border-rose-100 hover:bg-rose-600 hover:text-white transition-all">🗑️ Hapus</button>
