@@ -281,6 +281,95 @@ if (errLayanan) {
                 </div>
               </div>
 
+{/* LAYANAN IKM JUARA - DETAIL MODE */}
+<div className="bg-white rounded-[40px] shadow-xl overflow-hidden border-2 border-slate-100">
+  <div className="bg-indigo-900 p-6 flex items-center gap-3">
+    <span className="text-xl">🏆</span>
+    <h3 className="text-white font-black italic uppercase tracking-widest text-sm">Rincian Layanan IKM Juara</h3>
+  </div>
+  
+  <div className="p-6 space-y-6">
+    {layanan.length > 0 ? (
+      layanan.map((l, i) => (
+        <div key={i} className="group p-6 rounded-[32px] border-2 border-slate-50 bg-slate-50/50 hover:bg-white hover:border-indigo-100 hover:shadow-lg transition-all">
+          
+          {/* Header Kartu: Jenis Layanan & Status */}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+            <div>
+              <h4 className="font-black text-indigo-900 uppercase text-lg tracking-tight">
+                {l.jenis_layanan}
+              </h4>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                Fasilitasi Tahun {l.tahun || '-'}
+              </p>
+            </div>
+            <span className={`px-4 py-1.5 rounded-full font-black text-[10px] uppercase border ${
+              l.status === 'SELESAI' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 
+              l.status === 'PROSES' ? 'bg-amber-100 text-amber-700 border-amber-200' : 
+              'bg-rose-100 text-rose-700 border-rose-200'
+            }`}>
+              {l.status || 'DALAM PROSES'}
+            </span>
+          </div>
+
+          {/* Grid Detail: Nomor & Tahun */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+              <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Nomor Pendaftaran / Nama Produk</p>
+              <p className="text-sm font-bold text-slate-700 font-mono">
+                {l.no_pendaftaran || l.nama_produk || "Informasi belum tersedia"}
+              </p>
+            </div>
+            <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+              <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Tahun Fasilitasi</p>
+              <p className="text-sm font-bold text-slate-700">{l.tahun || "-"}</p>
+            </div>
+          </div>
+
+          {/* Akses Link Google Drive */}
+          <div className="flex flex-wrap gap-3">
+            {/* Tombol Bukti Daftar */}
+            {l.link_utama ? (
+              <a 
+                href={l.link_utama} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="flex-1 md:flex-none text-center bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase hover:bg-indigo-700 shadow-md transition-all flex items-center justify-center gap-2"
+              >
+                📂 BUKTI DAFTAR (G-DRIVE)
+              </a>
+            ) : (
+              <div className="flex-1 md:flex-none text-center bg-slate-100 text-slate-400 px-6 py-3 rounded-2xl font-black text-[10px] uppercase border border-dashed border-slate-200">
+                🚫 Bukti Belum Diunggah
+              </div>
+            )}
+
+            {/* Tombol Sertifikat */}
+            {l.link_tambahan ? (
+              <a 
+                href={l.link_tambahan} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="flex-1 md:flex-none text-center bg-emerald-500 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase hover:bg-emerald-600 shadow-md transition-all flex items-center justify-center gap-2"
+              >
+                📜 LIHAT SERTIFIKAT (G-DRIVE)
+              </a>
+            ) : (
+              <div className="flex-1 md:flex-none text-center bg-slate-100 text-slate-400 px-6 py-3 rounded-2xl font-black text-[10px] uppercase border border-dashed border-slate-200">
+                🚫 Sertifikat Belum Ada
+              </div>
+            )}
+          </div>
+        </div>
+      ))
+    ) : (
+      <div className="text-center py-10 italic text-slate-400 font-bold uppercase text-xs tracking-widest">
+        Data layanan IKM Juara tidak ditemukan.
+      </div>
+    )}
+  </div>
+</div>
+
               {/* RIWAYAT PELATIHAN */}
               <div className="bg-white rounded-[40px] shadow-xl overflow-hidden border-2 border-slate-100">
                 <div className="bg-emerald-600 p-6 flex items-center gap-3">
