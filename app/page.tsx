@@ -67,24 +67,25 @@ export default function IKMPage() {
   }
 
   // FIX SOFT DELETE
-  const handleSoftDelete = async (id: number) => {
-    if (!confirm("Pindahkan data ke Recycle Bin?")) return
-    
-    const { error } = await supabase
-      .from("ikm_binaan")
-      .update({ 
-        is_deleted: true, 
-        deleted_at: new Date().toISOString() 
-      })
-      .eq("id", id)
+const handleSoftDelete = async (id: number) => {
+  if (!confirm("Pindahkan ke Recycle Bin?")) return;
 
-    if (!error) {
-      alert("Data berhasil dipindahkan ke Sampah! 🗑️")
-      await fetchData() // Sinkronisasi tabel
-    } else {
-      alert("Gagal menghapus: " + error.message)
-    }
+  const { error } = await supabase
+    .from("ikm_binaan")
+    .update({ 
+      is_deleted: true, 
+      deleted_at: new Date().toISOString() 
+    })
+    .eq("id", id); // Pastikan ID ini sesuai dengan data yang diklik
+
+  if (!error) {
+    alert("Berhasil dipindahkan ke Recycle Bin! 🗑️");
+    // INI PENTING: Panggil kembali data agar tampilan diperbarui
+    await fetchData(); 
+  } else {
+    alert("Gagal menghapus: " + error.message);
   }
+};
 
   // RESTORE & PERMANENT DELETE
   const handleRestore = async (id: number) => {
