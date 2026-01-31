@@ -19,47 +19,66 @@ export default function PenelusuranIKM() {
     
     setLoading(true)
     setProfile(null)
+    try {
+      // 1. Cari Data Personal IKM
+      const { data: dataIKM, error: errIKM } = await supabase
+        .from("ikm_binaan")
+        .select("*")
+        .or(`nama_lengkap.ilike.%${searchQuery}%,no_nib.eq.${searchQuery},nik.eq.${searchQuery}`)
+        .maybeSingle()
 
-    // 1. Cari Data Personal IKM Binaan
-    const { data: dataIKM, error } = await supabase
-      .from("ikm_binaan")
-      .select("*")
-      .or(`nama_lengkap.ilike.%${searchQuery}%,no_nib.eq.${searchQuery},nik.eq.${searchQuery}`)
-      .maybeSingle()
+      if (errIKM) throw errIKM
+      if (!dataIKM) {
+        alert("Data tidak ditemukan.")
+        setLoading(false)
+        return
+      }
 
-    if (error || !dataIKM) {
-      alert("Data IKM tidak ditemukan. Pastikan NIB/NIK/Nama benar.")
+      setProfile(dataIKM)
+
+      // 2. Ambil Data Layanan (Halal, Merek, TKDN, dll)
+// Ganti bagian pengambilan data_layanan dengan kode ini:
+const { data: resLayanan, error: errLayanan } = await supabase
+  .from("semua_layanan_ikm") 
+  .select("*")
+  .eq("ikm_id", dataIKM.id)
+  .order("tahun", { ascending: false });
+
+if (errLayanan) {
+  console.error("Gagal sinkronisasi layanan:", errLayanan.message);
+  setLayanan([]);
+} else {
+  // Mapping agar sesuai dengan variabel yang digunakan di tabel UI Anda
+  const dataTerpadu = resLayanan.map(item => ({
+    jenis_layanan: item.jenis,
+    no_sertifikat: item.dokumen, // Mengambil 'no_pendaftaran' atau 'nama_produk' dari View
+    tahun_fasilitasi: item.tahun,
+    status: item.status
+  }));
+  
+  setLayanan(dataTerpadu);
+}
+
+      // 3. Ambil Riwayat Pelatihan (Melalui Tabel Relasi Peserta)
+      const { data: resPelatihan } = await supabase
+        .from("peserta_pelatihan")
+        .select(`
+          id,
+          kegiatan_pelatihan (
+            nama_kegiatan,
+            waktu_pelaksanaan,
+            deskripsi_kegiatan,
+            tahun_pelaksanaan
+          )
+        `)
+        .eq("ikm_id", dataIKM.id)
+
+      setPelatihan(resPelatihan || [])
       setLoading(false)
-      return
+    } catch (error) {
+      console.error("Error fetching data:", error)
+      setLoading(false)
     }
-
-    setProfile(dataIKM)
-
-    // 2. Ambil Data Layanan (Halal, Merek, TKDN, dll)
-    const { data: resLayanan } = await supabase
-      .from("data_layanan")
-      .select("*")
-      .eq("ikm_id", dataIKM.id)
-      .order("tahun_fasilitasi", { ascending: false })
-    
-    setLayanan(resLayanan || [])
-
-    // 3. Ambil Riwayat Pelatihan (Melalui Tabel Relasi Peserta)
-    const { data: resPelatihan } = await supabase
-      .from("peserta_pelatihan")
-      .select(`
-        id,
-        kegiatan_pelatihan (
-          nama_kegiatan,
-          waktu_pelaksanaan,
-          deskripsi_kegiatan,
-          tahun_pelaksanaan
-        )
-      `)
-      .eq("ikm_id", dataIKM.id)
-
-    setPelatihan(resPelatihan || [])
-    setLoading(false)
   }
 
   const handleReset = () => {
