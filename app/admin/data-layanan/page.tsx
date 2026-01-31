@@ -1,125 +1,260 @@
 "use client"
+
 import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabaseClient"
 
+// Jenis Layanan sesuai Kategori
+const LAYANAN_LIST = [
+  "Pendaftaran HKI Merek",
+  "Pendaftaran Sertifikat Halal",
+  "Pendaftaran TKDN IK",
+  "Pendaftaran dan Pendampingan SIINas",
+  "Pendaftaran Uji Nilai Gizi",
+  "Pendaftaran Kurasi Produk"
+]
+
 export default function DataLayananIKM() {
+  const [activeTab, setActiveTab] = useState(LAYANAN_LIST[0])
   const [dataLayanan, setDataLayanan] = useState<any[]>([])
-  const [selectedData, setSelectedData] = useState<any>(null) // Untuk Popup Detail/Edit
+  const [loading, setLoading] = useState(true)
+  const [selectedData, setSelectedData] = useState<{type: 'view' | 'edit', data: any} | null>(null)
 
   useEffect(() => {
-    fetchLayanan()
-  }, [])
+    fetchData()
+  }, [activeTab])
 
-  const fetchLayanan = async () => {
+  const fetchData = async () => {
+    setLoading(true)
     const { data, error } = await supabase
       .from("layanan_ikm_juara")
-      .select(`
-        *,
-        ikm_binaan (*)
-      `)
-    if (!error) setDataLayanan(data)
+      .select(`*, ikm_binaan(*)`)
+      .eq("jenis_layanan", activeTab)
+      .eq("is_deleted", false)
+      .order('created_at', { ascending: false })
+    
+    if (!error) setDataLayanan(data || [])
+    setLoading(false)
   }
 
   const handleSoftDelete = async (id: string) => {
-    if (!confirm("Apakah Anda yakin ingin menghapus data ini?")) return
+    if (confirm("Pindahkan data ke Recycle Bin?")) {
+      const { error } = await supabase
+        .from("layanan_ikm_juara")
+        .update({ is_deleted: true })
+        .eq("id", id)
+      if (!error) fetchData()
+    }
+  }
+
+  const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (!selectedData) return
     
+    const formData = new FormData(e.currentTarget)
+    const updates = Object.fromEntries(formData.entries())
+
     const { error } = await supabase
       .from("layanan_ikm_juara")
-      .update({ deleted_at: new Date().toISOString() })
-      .eq("id", id)
-    
+      .update(updates)
+      .eq("id", selectedData.data.id)
+
     if (!error) {
-      setDataLayanan(dataLayanan.filter(item => item.id !== id))
+      alert("Data berhasil diperbarui!")
+      setSelectedData(null)
+      fetchData()
     }
   }
 
   return (
-    <div className="p-8 bg-slate-50 min-h-screen">
-      <h1 className="text-2xl font-black mb-6">REKAPITULASI LAYANAN IKM JUARA</h1>
-      
-      <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-200">
-        <table className="w-full text-left border-collapse">
-          <thead className="bg-blue-900 text-white text-xs uppercase">
-            <tr>
-              <th className="p-4">Data Dasar IKM</th>
-              <th className="p-4">Jenis Layanan</th>
-              <th className="p-4">Detail Dokumen</th>
-              <th className="p-4">Tahun</th>
-              <th className="p-4 text-center">Aksi</th>
-            </tr>
-          </thead>
-          <tbody className="text-sm divide-y">
-            {dataLayanan.map((row) => (
-              <tr key={row.id} className="hover:bg-slate-50">
-                <td className="p-4">
-                  <div className="font-bold">{row.ikm_binaan?.nama || row.ikm_binaan?.nama_lengkap}</div>
-                  <div className="text-[10px] text-slate-500">NIB: {row.ikm_binaan?.no_nib} | HP: {row.ikm_binaan?.no_hp || row.ikm_binaan?.hp}</div>
-                </td>
-                <td className="p-4"><span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-md font-bold text-[10px]">{row.jenis_layanan}</span></td>
-                <td className="p-4">
-                  <div className="text-xs font-mono">{row.nomor_dokumen || "-"}</div>
-                  {row.link_dokumen && <a href={row.link_dokumen} target="_blank" className="text-blue-500 underline text-[10px]">Buka Link Drive</a>}
-                </td>
-                <td className="p-4 font-bold">{row.tahun_fasilitasi}</td>
-                <td className="p-4">
-                  <div className="flex justify-center gap-2">
-                    <button onClick={() => setSelectedData({type: 'view', data: row})} className="p-2 bg-slate-100 rounded-lg">👁️</button>
-                    <button onClick={() => setSelectedData({type: 'edit', data: row})} className="p-2 bg-amber-100 rounded-lg text-amber-600">✏️</button>
-                    <button onClick={() => handleSoftDelete(row.id)} className="p-2 bg-red-100 rounded-lg text-red-600">🗑️</button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <div className="p-8 bg-slate-100 min-h-screen text-slate-900 font-sans">
+      <h1 className="text-3xl font-black text-blue-900 mb-6 uppercase tracking-tighter italic">
+        📊 Data Layanan IKM Juara
+      </h1>
+
+      {/* SUB MENU TABS */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        {LAYANAN_LIST.map((layanan) => (
+          <button
+            key={layanan}
+            onClick={() => setActiveTab(layanan)}
+            className={`px-4 py-2 rounded-full font-bold text-xs transition-all shadow-sm ${
+              activeTab === layanan 
+              ? "bg-blue-600 text-white shadow-blue-200" 
+              : "bg-white text-slate-500 hover:bg-slate-200"
+            }`}
+          >
+            {layanan.replace("Pendaftaran ", "")}
+          </button>
+        ))}
       </div>
 
-      {/* MODAL POPUP (Detail / Edit) */}
+      {/* TABEL DATA */}
+      <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead className="bg-slate-50 border-b border-slate-200 text-[11px] uppercase font-black text-slate-600">
+              <tr>
+                <th className="p-5 text-center w-16">No</th>
+                <th className="p-5">Data Dasar IKM</th>
+                <th className="p-5">Detail Layanan ({activeTab})</th>
+                <th className="p-5">Tahun</th>
+                <th className="p-5 text-center">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {loading ? (
+                <tr><td colSpan={5} className="p-10 text-center font-bold animate-pulse text-slate-400">Memuat Data...</td></tr>
+              ) : dataLayanan.length === 0 ? (
+                <tr><td colSpan={5} className="p-10 text-center font-bold text-slate-400 text-sm">Belum ada data untuk layanan ini.</td></tr>
+              ) : (
+                dataLayanan.map((row, idx) => (
+                  <tr key={row.id} className="hover:bg-blue-50/30 transition-colors">
+                    <td className="p-5 text-center font-bold text-slate-400">{idx + 1}</td>
+                    <td className="p-5">
+                      <div className="font-black text-blue-900 text-sm">{row.ikm_binaan?.nama_lengkap || row.ikm_binaan?.nama}</div>
+                      <div className="text-[10px] font-bold text-slate-500 mt-1 uppercase">
+                        NIB: {row.ikm_binaan?.no_nib || row.ikm_binaan?.nib} <br/>
+                        HP: {row.ikm_binaan?.no_hp || row.ikm_binaan?.hp}
+                      </div>
+                    </td>
+                    <td className="p-5">
+                      <div className="text-sm font-bold text-slate-700">{row.nomor_dokumen || "—"}</div>
+                      {row.link_dokumen && (
+                        <a href={row.link_dokumen} target="_blank" className="text-blue-600 hover:underline text-[10px] font-bold flex items-center gap-1 mt-1">
+                          📁 Bukti Dokumen (Drive)
+                        </a>
+                      )}
+                      {row.status_sertifikat && (
+                        <span className={`text-[9px] px-2 py-0.5 rounded-full font-black mt-2 inline-block uppercase ${
+                          row.status_sertifikat === 'Telah Didaftar' ? 'bg-green-100 text-green-700' :
+                          row.status_sertifikat === 'Proses' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
+                        }`}>
+                          {row.status_sertifikat}
+                        </span>
+                      )}
+                    </td>
+                    <td className="p-5 font-black text-slate-600 text-sm">{row.tahun_fasilitasi}</td>
+                    <td className="p-5">
+                      <div className="flex justify-center gap-2">
+                        <button onClick={() => setSelectedData({type: 'view', data: row})} className="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all" title="Lihat Detail">👁️</button>
+                        <button onClick={() => setSelectedData({type: 'edit', data: row})} className="p-2 bg-amber-50 hover:bg-amber-100 rounded-xl text-amber-600 transition-all" title="Edit Data">✏️</button>
+                        <button onClick={() => handleSoftDelete(row.id)} className="p-2 bg-red-50 hover:bg-red-100 rounded-xl text-red-600 transition-all" title="Hapus">🗑️</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* POPUP MODAL (VIEW & EDIT) */}
       {selectedData && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white w-full max-w-2xl rounded-3xl p-8 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-start mb-6">
-              <h2 className="text-xl font-black uppercase tracking-tighter">
-                {selectedData.type === 'view' ? 'Detail Data Full' : 'Edit Data Layanan'}
-              </h2>
-              <button onClick={() => setSelectedData(null)} className="text-slate-400 text-2xl">×</button>
-            </div>
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <form onSubmit={handleUpdate} className="bg-white w-full max-w-2xl rounded-[40px] shadow-2xl overflow-hidden border border-slate-200">
+            <div className="p-8">
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h2 className="text-2xl font-black text-blue-900 uppercase tracking-tighter">
+                    {selectedData.type === 'view' ? '🔍 Detail Data Full' : '✏️ Update Data Layanan'}
+                  </h2>
+                  <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">{activeTab}</p>
+                </div>
+                <button type="button" onClick={() => setSelectedData(null)} className="bg-slate-100 p-2 rounded-full hover:bg-red-50 hover:text-red-500 transition-all font-bold">✕</button>
+              </div>
 
-            <div className="grid grid-cols-2 gap-6">
-              {/* Seksi Data Dasar */}
-              <div className="col-span-2 bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                <p className="text-[10px] font-bold text-blue-600 uppercase mb-2">Data Dasar IKM Binaan</p>
-                <div className="grid grid-cols-2 gap-y-2 text-sm">
-                  <p><strong>NIB:</strong> {selectedData.data.ikm_binaan.no_nib}</p>
-                  <p><strong>NIK:</strong> {selectedData.data.ikm_binaan.no_nik || selectedData.data.ikm_binaan.nik}</p>
-                  <p><strong>Nama:</strong> {selectedData.data.ikm_binaan.nama_lengkap}</p>
-                  <p><strong>HP:</strong> {selectedData.data.ikm_binaan.no_hp || selectedData.data.ikm_binaan.hp}</p>
+              <div className="space-y-6">
+                {/* Data Dasar (Read Only) */}
+                <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 grid grid-cols-2 gap-4">
+                  <div className="col-span-2 text-[10px] font-black text-blue-600 uppercase mb-1 tracking-widest">Data Dasar IKM (Fixed)</div>
+                  <DetailItem label="Nama Lengkap" value={selectedData.data.ikm_binaan.nama_lengkap || selectedData.data.ikm_binaan.nama} />
+                  <DetailItem label="NIB" value={selectedData.data.ikm_binaan.no_nib || selectedData.data.ikm_binaan.nib} />
+                  <DetailItem label="No HP" value={selectedData.data.ikm_binaan.no_hp || selectedData.data.ikm_binaan.hp} />
+                  <DetailItem label="Alamat" value={selectedData.data.ikm_binaan.alamat} />
+                </div>
+
+                {/* Data Inputan Layanan */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="col-span-2 text-[10px] font-black text-green-600 uppercase mb-1 tracking-widest">Data Inputan {activeTab}</div>
+                  
+                  <InputPopup 
+                    label="Nomor Dokumen/Pendaftaran" 
+                    name="nomor_dokumen" 
+                    val={selectedData.data.nomor_dokumen} 
+                    isEdit={selectedData.type === 'edit'} 
+                  />
+                  
+                  <InputPopup 
+                    label="Tahun Fasilitasi" 
+                    name="tahun_fasilitasi" 
+                    type="number"
+                    val={selectedData.data.tahun_fasilitasi} 
+                    isEdit={selectedData.type === 'edit'} 
+                  />
+
+                  {activeTab === "Pendaftaran HKI Merek" && (
+                    <div className="md:col-span-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase ml-2 mb-1 block">Sertifikat Merek</label>
+                      <select 
+                        name="status_sertifikat"
+                        disabled={selectedData.type === 'view'}
+                        className="w-full border-2 border-slate-100 rounded-2xl p-3 bg-white font-bold outline-none focus:border-blue-500 disabled:opacity-70"
+                        defaultValue={selectedData.data.status_sertifikat}
+                      >
+                        <option>Telah Didaftar</option><option>Proses</option><option>Ditolak</option>
+                      </select>
+                    </div>
+                  )}
+
+                  <InputPopup 
+                    label="Link Bukti Dokumen (Drive)" 
+                    name="link_dokumen" 
+                    val={selectedData.data.link_dokumen} 
+                    isEdit={selectedData.type === 'edit'} 
+                    className="md:col-span-2"
+                  />
                 </div>
               </div>
 
-              {/* Seksi Data Layanan - Inputan jika Edit, Text jika View */}
-              <div className="col-span-2">
-                <p className="text-[10px] font-bold text-green-600 uppercase mb-4 tracking-widest">Detail Layanan: {selectedData.data.jenis_layanan}</p>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400">NOMOR DOKUMEN / PENDAFTARAN</label>
-                    <input 
-                      disabled={selectedData.type === 'view'}
-                      className="w-full border-b p-2 outline-none focus:border-blue-500 disabled:bg-transparent"
-                      defaultValue={selectedData.data.nomor_dokumen}
-                    />
-                  </div>
-                  {/* ... Tambahkan field lain sesuai jenis layanan seperti Link Drive, Tahun, dll ... */}
-                </div>
-              </div>
+              {selectedData.type === 'edit' && (
+                <button type="submit" className="w-full mt-8 bg-blue-600 hover:bg-blue-700 text-white p-5 rounded-2xl font-black text-lg shadow-xl shadow-blue-200 active:scale-95 transition-all">
+                  💾 SIMPAN PERUBAHAN DATA
+                </button>
+              )}
             </div>
+          </form>
+        </div>
+      )}
+    </div>
+  )
+}
 
-            {selectedData.type === 'edit' && (
-              <button className="w-full mt-8 bg-blue-600 text-white p-4 rounded-2xl font-bold shadow-lg shadow-blue-200">
-                UPDATE DATA SEKARANG
-              </button>
-            )}
-          </div>
+function DetailItem({ label, value }: { label: string, value: string }) {
+  return (
+    <div>
+      <label className="text-[9px] font-bold text-slate-400 uppercase block">{label}</label>
+      <p className="font-bold text-slate-700 text-sm">{value || "—"}</p>
+    </div>
+  )
+}
+
+function InputPopup({ label, name, val, isEdit, type="text", className="" }: any) {
+  return (
+    <div className={className}>
+      <label className="text-[10px] font-black text-slate-400 uppercase ml-2 mb-1 block">{label}</label>
+      {isEdit ? (
+        <input 
+          name={name}
+          type={type}
+          defaultValue={val}
+          className="w-full border-2 border-slate-100 rounded-2xl p-3 bg-white font-bold outline-none focus:border-blue-500"
+        />
+      ) : (
+        <div className="w-full bg-slate-50 border-2 border-transparent rounded-2xl p-3 font-bold text-slate-700 break-all text-sm">
+          {val && type === "text" && val.startsWith('http') ? (
+            <a href={val} target="_blank" className="text-blue-600 underline">Klik Buka Link</a>
+          ) : (val || "—")}
         </div>
       )}
     </div>
