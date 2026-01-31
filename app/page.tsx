@@ -55,22 +55,24 @@ export default function IKMPage() {
   }
 
   // LOGIKA SOFT DELETE YANG DIPERBAIKI
-  const handleSoftDelete = async (id: number) => {
-    if (!confirm("Pindahkan data ini ke Recycle Bin?")) return;
+const handleSoftDelete = async (id: number) => {
+    if (!confirm("Pindahkan ke Recycle Bin?")) return;
 
+    // Gunakan update dengan paksaan nilai boolean murni
     const { error } = await supabase
       .from("ikm_binaan")
       .update({ 
         is_deleted: true, 
         deleted_at: new Date().toISOString() 
       })
-      .eq("id", id);
+      .eq("id", id)
+      .select(); // Tambahkan .select() untuk memastikan kembalian data
 
     if (error) {
-      console.error("Error Detail:", error);
-      alert("Gagal memindahkan: " + error.message + " (Cek RLS di Supabase)");
+      console.error("Detail Error:", error);
+      alert(`Gagal: ${error.message}`);
     } else {
-      alert("Data berhasil dipindahkan ke Sampah! 🗑️");
+      alert("Berhasil pindah ke Sampah! 🗑️");
       await fetchData(); 
     }
   };
