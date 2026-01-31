@@ -32,7 +32,6 @@ export default function PelatihanPemberdayaan() {
     setLoading(false)
   }
 
-  // LOGIKA DELETE & RESTORE
   const handleAction = async (id: string, action: "soft-delete" | "permanent-delete" | "restore") => {
     let confirmMsg = "Hapus kegiatan ini?"
     if (action === "permanent-delete") confirmMsg = "Hapus permanen? Data tidak bisa dikembalikan!"
@@ -75,6 +74,35 @@ export default function PelatihanPemberdayaan() {
     if(!error) {
       fetchPeserta(showModalPeserta.data.id); fetchKegiatan(); setSearchIKM(""); setListIKM([])
     }
+  }
+
+  // FUNGSI EKSPOR EXCEL SESUAI KOLOM PERMINTAAN
+  const exportExcelPeserta = (itemKegiatan: any) => {
+    if(pesertaKegiatan.length === 0) return alert("Belum ada data peserta untuk diekspor.")
+    
+    const dataExport = pesertaKegiatan.map((p, i) => ({
+      "No": i + 1,
+      "Nama Kegiatan": itemKegiatan.nama_kegiatan,
+      "Pelaksanaan": itemKegiatan.waktu_pelaksanaan || "-",
+      "Tahun Pelaksanaan": itemKegiatan.tahun_pelaksanaan,
+      "Nama Peserta": p.ikm_binaan?.nama_lengkap || "-",
+      "NIB": p.ikm_binaan?.no_nib || "-",
+      "NIK": p.ikm_binaan?.nik || "-",
+      "Nama Usaha": p.ikm_binaan?.nama_usaha || "-",
+      "Alamat": p.ikm_binaan?.alamat || "-",
+      "Nomor HP": p.ikm_binaan?.no_hp || "-"
+    }))
+
+    const ws = XLSX.utils.json_to_sheet(dataExport)
+    const wscols = [
+      {wch: 5}, {wch: 30}, {wch: 25}, {wch: 15}, {wch: 25}, 
+      {wch: 20}, {wch: 20}, {wch: 25}, {wch: 40}, {wch: 15}
+    ]
+    ws['!cols'] = wscols
+
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, "Daftar Peserta")
+    XLSX.writeFile(wb, `LAPORAN_PESERTA_${itemKegiatan.nama_kegiatan.replace(/ /g, "_")}.xlsx`)
   }
 
   const handleSaveKegiatan = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -211,41 +239,75 @@ export default function PelatihanPemberdayaan() {
         </div>
       )}
 
-      {/* --- MODAL PESERTA (Tetap Sama) --- */}
+      {/* --- MODAL PESERTA REVISI --- */}
       {showModalPeserta.show && (
         <div className="fixed inset-0 bg-indigo-950/95 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="bg-white w-full max-w-5xl rounded-[40px] border-4 border-emerald-500 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="p-8 bg-emerald-600 text-white flex justify-between items-center">
               <div>
                 <h2 className="font-black uppercase italic text-xl">Daftar Peserta Pelatihan</h2>
-                <p className="text-[11px] font-bold opacity-90 uppercase tracking-widest">{showModalPeserta.data?.nama_kegiatan}</p>
+                <p className="text-[11px] font-bold opacity-90 uppercase tracking-widest">{showModalPeserta.data?.nama_kegiatan} | {showModalPeserta.data?.waktu_pelaksanaan}</p>
               </div>
-              <button onClick={() => setShowModalPeserta({show: false, data: null})} className="font-black text-2xl hover:text-rose-200 transition-colors">✕</button>
+              <div className="flex gap-3">
+                <button onClick={() => exportExcelPeserta(showModalPeserta.data)} className="bg-white text-emerald-700 px-6 py-2 rounded-xl font-black text-[10px] uppercase shadow-md hover:bg-emerald-50 transition-all">📊 EXPORT .XLSX</button>
+                <button onClick={() => setShowModalPeserta({show: false, data: null})} className="font-black text-2xl hover:text-rose-200 transition-colors">✕</button>
+              </div>
             </div>
-            {/* ... (Konten modal peserta sama seperti sebelumnya) ... */}
-            <div className="p-8 overflow-y-auto">
-                <p className="text-center italic text-slate-400">Gunakan kolom pencarian di bawah untuk menambah peserta dari data IKM Binaan.</p>
-                <div className="mt-4 relative">
-                    <input value={searchIKM} onChange={(e) => cariIKM(e.target.value)} placeholder="Cari Nama/NIB/NIK..." className="w-full p-4 border-2 rounded-2xl font-bold border-emerald-100 focus:border-emerald-500 outline-none" />
-                    {listIKM.length > 0 && (
-                        <div className="absolute left-0 right-0 bg-white border shadow-xl z-20 rounded-xl mt-1 overflow-hidden">
-                            {listIKM.map(i => (
-                                <div key={i.id} onClick={() => tambahPeserta(i.id)} className="p-4 hover:bg-emerald-50 cursor-pointer flex justify-between items-center border-b">
-                                    <span className="font-bold uppercase text-xs">{i.nama_lengkap} ({i.no_nib})</span>
-                                    <span className="text-[10px] bg-emerald-600 text-white px-2 py-1 rounded-lg">TAMBAH</span>
-                                </div>
-                            ))}
+            
+            <div className="p-8 flex-1 overflow-y-auto bg-slate-50">
+              {/* Input Pencarian Peserta */}
+              <div className="mb-8 relative">
+                <label className="text-[10px] font-black text-slate-500 uppercase block mb-2 ml-1">Tambah Peserta (Cari Nama IKM / NIB / NIK)</label>
+                <input value={searchIKM} onChange={(e) => cariIKM(e.target.value)} placeholder="Ketik minimal 2 karakter..." className="w-full p-4 rounded-2xl border-2 border-slate-200 outline-none focus:border-emerald-500 font-bold bg-white shadow-inner" />
+                {listIKM.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 bg-white shadow-2xl rounded-2xl mt-2 border-2 border-emerald-100 z-10 overflow-hidden">
+                    {listIKM.map(ikm => (
+                      <div key={ikm.id} className="p-4 border-b last:border-0 flex justify-between items-center hover:bg-emerald-50">
+                        <div>
+                          <div className="font-black text-slate-800 uppercase text-sm">{ikm.nama_lengkap}</div>
+                          <div className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">NIB: {ikm.no_nib} | Usaha: {ikm.nama_usaha || "-"}</div>
                         </div>
-                    )}
-                </div>
-                <table className="w-full mt-6 border-collapse">
-                    <thead><tr className="bg-slate-100 text-[10px] uppercase font-black tracking-widest"><th className="p-4 text-left">Nama Peserta</th><th className="p-4 text-center w-20">Aksi</th></tr></thead>
-                    <tbody>
-                        {pesertaKegiatan.map(p => (
-                            <tr key={p.id} className="border-b"><td className="p-4 font-bold text-sm uppercase">{p.ikm_binaan?.nama_lengkap}</td><td className="p-4"><button onClick={async () => {if(confirm("Hapus?")) {await supabase.from("peserta_pelatihan").delete().eq("id", p.id); fetchPeserta(showModalPeserta.data.id); fetchKegiatan();}}} className="text-rose-500 font-bold text-xs uppercase underline">Hapus</button></td></tr>
-                        ))}
-                    </tbody>
+                        <button onClick={() => tambahPeserta(ikm.id)} className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase shadow-sm active:scale-95">TAMBAHKAN ➕</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Tabel Detail Peserta Terdaftar */}
+              <div className="rounded-3xl border-2 border-slate-200 overflow-hidden bg-white shadow-lg">
+                <table className="w-full text-left">
+                  <thead className="bg-slate-100 text-slate-500">
+                    <tr className="text-[9px] font-black uppercase tracking-widest">
+                      <th className="p-4 w-12 text-center">NO</th>
+                      <th className="p-4">DETAIL IDENTITAS PESERTA</th>
+                      <th className="p-4 text-center">AKSI</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {pesertaKegiatan.length === 0 ? (
+                        <tr><td colSpan={3} className="p-10 text-center font-bold text-slate-300 italic">Belum ada peserta terdaftar.</td></tr>
+                    ) : pesertaKegiatan.map((p, i) => (
+                      <tr key={p.id} className="hover:bg-slate-50 transition-all">
+                        <td className="p-4 text-center font-bold text-slate-400 text-xs border-r">{i + 1}</td>
+                        <td className="p-4">
+                          <div className="font-black text-indigo-900 text-sm uppercase leading-tight">{p.ikm_binaan?.nama_lengkap}</div>
+                          <div className="text-[11px] font-bold text-emerald-600 uppercase mt-1">🏪 {p.ikm_binaan?.nama_usaha || "Nama Usaha Kosong"}</div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 mt-1.5 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                            <div className="text-[10px] font-medium text-slate-500"><span className="font-bold opacity-50">NIB:</span> {p.ikm_binaan?.no_nib || "-"}</div>
+                            <div className="text-[10px] font-medium text-slate-500"><span className="font-bold opacity-50">NIK:</span> {p.ikm_binaan?.nik || "-"}</div>
+                            <div className="text-[10px] font-medium text-slate-500"><span className="font-bold opacity-50">TELP:</span> {p.ikm_binaan?.no_hp || "-"}</div>
+                            <div className="text-[10px] font-medium text-slate-500 truncate"><span className="font-bold opacity-50">ALAMAT:</span> {p.ikm_binaan?.alamat || "-"}</div>
+                          </div>
+                        </td>
+                        <td className="p-4 text-center border-l">
+                          <button onClick={async () => { if(confirm("Hapus peserta ini dari kegiatan?")) { await supabase.from("peserta_pelatihan").delete().eq("id", p.id); fetchPeserta(showModalPeserta.data.id); fetchKegiatan(); } }} className="text-rose-500 px-4 py-2 rounded-xl font-black text-[9px] uppercase border-2 border-rose-50 hover:bg-rose-600 hover:text-white transition-all shadow-sm">🗑️ Hapus</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
                 </table>
+              </div>
             </div>
           </div>
         </div>
