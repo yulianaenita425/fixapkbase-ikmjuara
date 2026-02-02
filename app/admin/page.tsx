@@ -45,7 +45,7 @@ export default function AdminDashboard() {
       // Ambil jumlah data dari masing-masing tabel secara paralel
       const [ikm, dataLayanan, layananAktif, pelatihan, deleted] = await Promise.all([
         supabase.from("ikm_binaan").select("*", { count: 'exact', head: true }),
-        supabase.from("data_layanan").select("*", { count: 'exact', head: true }),
+        supabase.from("layanan_ikm_juara").select("*", { count: 'exact', head: true }),
         supabase.from("layanan_ikm_juara").select("*", { count: 'exact', head: true }).eq("is_deleted", false),
         supabase.from("kegiatan_pelatihan").select("*", { count: 'exact', head: true }),
         supabase.from("layanan_ikm_juara").select("*", { count: 'exact', head: true }).eq("is_deleted", true)
