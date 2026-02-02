@@ -1,148 +1,223 @@
-"use client";
-import { useState } from 'react';
-import Image from 'next/image';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+"use client"
 
-const DATA_IKM = [
-  { id: 1, nama: "IKM Keripik Tempe Madiun", produk: "Makanan Ringan", tahun: "2024", merek: "Sudah Terbit", sertifikat: "CERT-001/IKM/2024" },
-  { id: 2, nama: "Batik Madiun Juara", produk: "Fashion & Tekstil", tahun: "2023", merek: "Proses", sertifikat: "-" },
-  { id: 3, nama: "Sambel Pecel Asli Madiun", produk: "Bumbu Masak", tahun: "2024", merek: "Sudah Terbit", sertifikat: "CERT-003/IKM/2024" },
-];
+import { useState } from "react"
+import { supabase } from "@/lib/supabaseClient"
+import * as XLSX from "xlsx"
+import jsPDF from "jspdf"
+import autoTable from "jspdf-autotable"
 
-export default function PencarianData() {
-  const [searchTerm, setSearchTerm] = useState("");
+function DataDetail({ label, value, color = "text-slate-700" }: { label: string, value: string, color?: string }) {
+  return (
+    <div className="border-b border-slate-50 pb-3">
+      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">{label}</label>
+      <div className={`text-sm font-bold break-words leading-tight ${color}`}>{value || "-"}</div>
+    </div>
+  )
+}
 
-  // FUNGSI EXPORT PDF SEMUA DATA
-  const exportAllToPDF = () => {
-    const doc = new jsPDF();
+export default function PenelusuranIKM() {
+  const [searchQuery, setSearchQuery] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [profile, setProfile] = useState<any>(null)
+  const [layanan, setLayanan] = useState<any[]>([])
+  const [pelatihan, setPelatihan] = useState<any[]>([])
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!searchQuery) return
     
-    // Header Kop Surat
-    doc.setFontSize(14);
-    doc.text("PEMERINTAH KOTA MADIUN", 105, 15, { align: "center" });
-    doc.setFontSize(18);
-    doc.setFont("helvetica", "bold");
-    doc.text("DATABASE IKM BINAAN - IKM JUARA", 105, 25, { align: "center" });
-    doc.setLineWidth(0.5);
-    doc.line(20, 30, 190, 30);
+    setLoading(true)
+    setProfile(null)
+    setLayanan([])
+    setPelatihan([])
 
-    // Tabel Data
-    autoTable(doc, {
-      startY: 40,
-      head: [['No', 'Nama IKM', 'Produk Utama', 'Tahun', 'Status Merek']],
-      body: DATA_IKM.map((ikm, index) => [
-        index + 1,
-        ikm.nama,
-        ikm.produk,
-        ikm.tahun,
-        ikm.merek
-      ]),
-      headStyles: { fillColor: [26, 26, 64] },
-      theme: 'grid'
-    });
+    try {
+      const cleanQuery = searchQuery.trim();
+      const { data: dataIKM, error: errIKM } = await supabase
+        .from("ikm_binaan")
+        .select("*")
+        .or(`nama_lengkap.ilike.%${cleanQuery}%,no_nib.ilike.%${cleanQuery}%,nik.ilike.%${cleanQuery}%`)
+        .maybeSingle()
 
-    doc.save("Laporan_IKM_JUARA.pdf");
-  };
+      if (errIKM) throw errIKM
+      if (!dataIKM) {
+        alert("Data IKM tidak ditemukan. Pastikan NIB/NIK/Nama sudah benar.");
+        setLoading(false)
+        return
+      }
 
-  // FUNGSI CETAK SERTIFIKAT SATUAN (SIMULASI)
-  const printCertificate = (ikm: any) => {
-    const doc = new jsPDF({ orientation: 'landscape' });
-    
-    // Frame Border
-    doc.setLineWidth(2);
-    doc.rect(10, 10, 277, 190);
-    
-    doc.setFontSize(30);
-    doc.text("SERTIFIKAT PENGHARGAAN", 148, 50, { align: "center" });
-    doc.setFontSize(16);
-    doc.text("Diberikan Kepada:", 148, 70, { align: "center" });
-    doc.setFontSize(24);
-    doc.setFont("times", "bolditalic");
-    doc.text(ikm.nama, 148, 90, { align: "center" });
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(14);
-    doc.text(`Sebagai IKM Binaan Unggulan Kota Madiun untuk Produk ${ikm.produk}`, 148, 110, { align: "center" });
-    doc.text(`ID Sertifikat: ${ikm.sertifikat}`, 148, 125, { align: "center" });
+      setProfile(dataIKM)
 
-    doc.text("Madiun, 2026", 220, 160);
-    doc.text("Admin IKM JUARA", 220, 180);
+      // Ambil Data Layanan
+      const { data: resLayanan, error: errLayanan } = await supabase
+        .from("layanan_ikm_juara") 
+        .select("jenis_layanan, nomor_dokumen, tahun_fasilitasi, status_sertifikat, link_dokumen, link_tambahan, tanggal_uji") 
+        .eq("ikm_id", dataIKM.id)
+        .eq("is_deleted", false)
+        .order("tahun_fasilitasi", { ascending: false });
 
-    doc.save(`Sertifikat_${ikm.nama}.pdf`);
-  };
+      if (!errLayanan) setLayanan(resLayanan || []);
+
+      // Ambil Riwayat Pelatihan Lengkap
+      const { data: resPelatihan, error: errPelatihan } = await supabase
+        .from("peserta_pelatihan")
+        .select(`
+          kegiatan_pelatihan (
+            nama_kegiatan,
+            waktu_pelaksanaan,
+            deskripsi_kegiatan,
+            tahun_pelaksanaan
+          )
+        `)
+        .eq("ikm_id", dataIKM.id)
+
+      if (!errPelatihan && resPelatihan) {
+        const formattedPelatihan = resPelatihan.map((p: any) => p.kegiatan_pelatihan)
+        setPelatihan(formattedPelatihan)
+      }
+
+    } catch (error) {
+      console.error("Error:", error)
+      alert("Terjadi kesalahan saat mengambil data.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleReset = () => {
+    setSearchQuery(""); setProfile(null); setLayanan([]); setPelatihan([]);
+  }
+
+  const exportExcel = () => {
+    if (!profile) return
+    const wb = XLSX.utils.book_new()
+    const dataGabungan = [
+      ["PROFIL PERSONAL IKM"],
+      ["Nama", profile.nama_lengkap], ["NIB", profile.no_nib], ["Usaha", profile.nama_usaha],
+      [""], ["RIWAYAT LAYANAN"],
+      ["No", "Layanan", "No. Dokumen", "Tahun", "Status"]
+    ]
+    layanan.forEach((l, i) => dataGabungan.push([i + 1, l.jenis_layanan, l.nomor_dokumen || "-", l.tahun_fasilitasi || "-", l.status_sertifikat || "-"]))
+    const ws1 = XLSX.utils.aoa_to_sheet(dataGabungan)
+    XLSX.utils.book_append_sheet(wb, ws1, "Profil dan Layanan")
+    XLSX.writeFile(wb, `DATA_IKM_${profile.no_nib}.xlsx`)
+  }
 
   return (
-    <div className="min-h-screen bg-[#F0F4F8] text-[#1A1A40]">
-      {/* Sidebar (Sama seperti sebelumnya) */}
-      <aside className="fixed left-0 top-0 h-full w-64 bg-[#1A1A40] text-white p-6 hidden lg:block shadow-2xl">
-        <div className="flex items-center gap-3 mb-12">
-          <div className="bg-white p-1 rounded-lg">
-            <Image src="/Laura joss.png" alt="Logo" width={24} height={24} />
+    <div className="p-4 md:p-8 bg-[#F1F5F9] min-h-screen font-sans text-slate-900">
+      <div className="max-w-6xl mx-auto bg-indigo-950 p-8 md:p-12 rounded-[40px] shadow-2xl mb-8 border-b-[10px] border-indigo-600">
+        <h1 className="text-3xl font-black text-white italic uppercase tracking-tighter mb-6 flex items-center gap-3">
+          <span className="text-4xl">🔎</span> PENELUSURAN DATA IKM
+        </h1>
+        <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4">
+          <input 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Input Nama / NIB / NIK..."
+            className="flex-1 p-5 rounded-2xl font-bold text-lg outline-none border-4 border-transparent focus:border-indigo-400 shadow-2xl bg-indigo-900/50 text-white placeholder:text-indigo-300/50"
+          />
+          <div className="flex gap-3">
+            <button type="submit" className="bg-indigo-500 text-white px-10 py-5 rounded-2xl font-black hover:bg-indigo-400 transition-all shadow-lg active:scale-95 uppercase">TELUSURI</button>
+            <button type="button" onClick={handleReset} className="bg-rose-600 text-white px-8 py-5 rounded-2xl font-black hover:bg-rose-500 transition-all shadow-lg active:scale-95 uppercase">RESET</button>
           </div>
-          <span className="font-black text-lg">IKM JUARA</span>
-        </div>
-        <nav className="space-y-4">
-          <div className="bg-indigo-600 p-3 rounded-xl cursor-pointer">📊 Dashboard</div>
-        </nav>
-      </aside>
+        </form>
+      </div>
 
-      <main className="lg:ml-64 p-6 md:p-10">
-        <header className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
-          <div>
-            <h1 className="text-3xl font-black italic tracking-tight">DATA IKM BINAAN</h1>
-            <p className="text-slate-500 font-medium">Sistem Monitoring Akselerasi Industri</p>
+      {loading && <div className="text-center py-20 animate-pulse text-indigo-950 font-black italic uppercase text-xl">🚀 Menghubungkan Database...</div>}
+
+      {profile && (
+        <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="flex justify-end gap-3">
+            <button onClick={exportExcel} className="bg-emerald-500 text-white px-6 py-3 rounded-xl font-black text-xs uppercase shadow-md hover:bg-emerald-600 transition-all">📊 EXCEL</button>
           </div>
-          <button 
-            onClick={exportAllToPDF}
-            className="flex items-center gap-2 bg-red-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-red-700 shadow-lg shadow-red-200 transition-all active:scale-95"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-            EXPORT LAPORAN PDF
-          </button>
-        </header>
 
-        {/* Search Bar */}
-        <div className="bg-white p-4 rounded-[1.5rem] shadow-sm mb-6 flex gap-4">
-            <input 
-              type="text" 
-              placeholder="Cari nama IKM..."
-              className="flex-1 px-6 py-3 bg-slate-50 border-none rounded-xl outline-none focus:ring-2 focus:ring-indigo-600"
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-        </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-1 bg-white p-8 rounded-[40px] shadow-xl border-2 border-slate-100 h-fit sticky top-8">
+              <div className="w-20 h-20 bg-indigo-100 rounded-3xl flex items-center justify-center text-3xl mb-6 shadow-inner">👤</div>
+              <h2 className="text-2xl font-black text-indigo-950 uppercase leading-tight">{profile.nama_lengkap}</h2>
+              <p className="text-[10px] font-black text-indigo-500 bg-indigo-50 inline-block px-3 py-1 rounded-lg mt-2 uppercase tracking-widest">Terverifikasi Binaan</p>
+              <div className="mt-8 space-y-5">
+                <DataDetail label="NIB" value={profile.no_nib} />
+                <DataDetail label="NIK" value={profile.nik} />
+                <DataDetail label="NAMA USAHA" value={profile.nama_usaha} color="text-emerald-600" />
+                <DataDetail label="WHATSAPP" value={profile.no_hp} />
+                <DataDetail label="ALAMAT" value={profile.alamat} />
+              </div>
+            </div>
 
-        {/* Table Container */}
-        <div className="bg-white rounded-[2rem] shadow-xl border border-slate-100 overflow-hidden">
-          <table className="w-full text-left">
-            <thead className="bg-slate-50 text-slate-400 text-[10px] font-black uppercase tracking-widest">
-              <tr>
-                <th className="px-6 py-4">No</th>
-                <th className="px-6 py-4">Nama IKM</th>
-                <th className="px-6 py-4 text-center">Aksi Sertifikat</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 font-medium text-sm">
-              {DATA_IKM.map((ikm, index) => (
-                <tr key={ikm.id} className="hover:bg-slate-50 transition group">
-                  <td className="px-6 py-5 text-slate-400">{index + 1}</td>
-                  <td className="px-6 py-5 font-bold">{ikm.nama}</td>
-                  <td className="px-6 py-5 text-center">
-                    {ikm.merek === "Sudah Terbit" ? (
-                      <button 
-                        onClick={() => printCertificate(ikm)}
-                        className="bg-green-100 text-green-700 px-4 py-2 rounded-xl font-bold hover:bg-green-600 hover:text-white transition-all border border-green-200"
-                      >
-                        CETAK SERTIFIKAT
-                      </button>
-                    ) : (
-                      <span className="text-slate-300 italic text-xs">Dalam Proses</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+            <div className="lg:col-span-2 space-y-8">
+              <div className="bg-white rounded-[40px] shadow-xl overflow-hidden border-2 border-slate-100">
+                <div className="bg-indigo-900 p-6 flex items-center gap-3">
+                  <span className="text-xl">🏆</span>
+                  <h3 className="text-white font-black italic uppercase tracking-widest text-sm">Rincian Layanan IKM Juara</h3>
+                </div>
+                <div className="p-6 space-y-6">
+                  {layanan.map((l, i) => (
+                    <div key={i} className="p-6 bg-slate-50 rounded-[30px] border-l-[8px] border-indigo-500">
+                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+                        <div>
+                          <h4 className="font-black text-indigo-900 uppercase text-lg tracking-tight">{l.jenis_layanan}</h4>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tahun Fasilitasi: {l.tahun_fasilitasi}</p>
+                        </div>
+                        {l.jenis_layanan.toLowerCase().includes('merek') && (
+                          <span className="px-4 py-1.5 rounded-full font-black text-[10px] uppercase bg-amber-100 text-amber-700 border border-amber-200">
+                            {l.status_sertifikat || 'PROSES'}
+                          </span>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                        <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                          <p className="text-[9px] font-black text-slate-400 uppercase mb-1">No. Dokumen / Pendaftaran</p>
+                          <p className="text-sm font-bold text-slate-700 font-mono">{l.nomor_dokumen || "-"}</p>
+                        </div>
+                        <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                          <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Keterangan Waktu</p>
+                          <p className="text-sm font-bold text-slate-700">{l.tanggal_uji || l.tahun_fasilitasi || "-"}</p>
+                        </div>
+                      </div>
+                      {/* TOMBOL LAMPIRAN DIKEMBALIKAN DI SINI */}
+                      <div className="flex flex-wrap gap-3">
+                        {l.link_dokumen && l.link_dokumen !== "-" && (
+                          <a href={l.link_dokumen} target="_blank" rel="noopener noreferrer" className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase hover:bg-indigo-700 shadow-md flex items-center gap-2">📂 LIHAT SERTIFIKAT</a>
+                        )}
+                        {l.link_tambahan && l.link_tambahan !== "-" && (
+                          <a href={l.link_tambahan} target="_blank" rel="noopener noreferrer" className="bg-emerald-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase hover:bg-emerald-700 shadow-md flex items-center gap-2">📗 LINK TAMBAHAN</a>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-white rounded-[40px] shadow-xl overflow-hidden border-2 border-slate-100">
+                <div className="bg-emerald-600 p-6 flex items-center gap-3">
+                  <span className="text-xl">🎓</span>
+                  <h3 className="text-white font-black italic uppercase tracking-widest text-sm">Riwayat Pelatihan & Pemberdayaan</h3>
+                </div>
+                <div className="p-6 space-y-4">
+                  {pelatihan.length > 0 ? pelatihan.map((p, i) => (
+                    <div key={i} className="p-6 bg-slate-50 rounded-[30px] border-l-[8px] border-emerald-500 shadow-sm">
+                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-2">
+                        <h4 className="font-black text-indigo-950 uppercase text-base leading-tight">{p.nama_kegiatan}</h4>
+                        <div className="flex gap-2">
+                          <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 px-3 py-1 rounded-lg uppercase tracking-wider whitespace-nowrap">📅 {p.tahun_pelaksanaan}</span>
+                          <span className="text-[10px] font-black text-blue-700 bg-blue-100 px-3 py-1 rounded-lg uppercase tracking-wider whitespace-nowrap">⏰ {p.waktu_pelaksanaan || "-"}</span>
+                        </div>
+                      </div>
+                      <div className="bg-white p-4 rounded-2xl border border-slate-100">
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2">Deskripsi Kegiatan</label>
+                        <p className="text-xs text-slate-600 italic leading-relaxed font-medium">"{p.deskripsi_kegiatan || 'Tidak ada uraian kegiatan.'}"</p>
+                      </div>
+                    </div>
+                  )) : (
+                    <div className="text-center py-10 italic text-slate-400 font-bold uppercase text-xs tracking-widest">Belum ada riwayat pelatihan.</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-      </main>
+      )}
     </div>
-  );
+  )
 }
