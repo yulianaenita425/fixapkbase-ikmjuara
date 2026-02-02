@@ -33,11 +33,12 @@ export default function PenelusuranIKM() {
 
     try {
       // 1. Cari Data Personal IKM
-      const { data: dataIKM, error: errIKM } = await supabase
-        .from("ikm_binaan")
-        .select("*")
-        .or(`nama_lengkap.ilike.%${searchQuery}%,no_nib.eq.${searchQuery},nik.eq.${searchQuery}`)
-        .maybeSingle()
+    // Ganti bagian query lama dengan ini:
+const { data: dataIKM, error: errIKM } = await supabase
+  .from("ikm_binaan")
+  .select("*")
+  .or(`nama_lengkap.ilike.%${searchQuery}%,no_nib.ilike.%${searchQuery}%,nik.ilike.%${searchQuery}%`)
+  .maybeSingle()
 
       if (errIKM) throw errIKM
       if (!dataIKM) {
