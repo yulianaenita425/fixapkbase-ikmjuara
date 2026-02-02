@@ -148,3 +148,28 @@ body {
     background-color: #1A1A40;
   }
 }
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Glassmorphism utility */
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #1A1A40;
+}
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(#4f46e5, #9333ea);
+  border-radius: 10px;
+}
