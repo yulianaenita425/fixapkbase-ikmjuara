@@ -88,7 +88,6 @@ export default function PenelusuranIKM() {
     setSearchQuery(""); setProfile(null); setLayanan([]); setPelatihan([]);
   }
 
-  // LOGIKA EXPORT
   const exportExcel = () => {
     if (!profile) return
     const wb = XLSX.utils.book_new()
@@ -99,7 +98,6 @@ export default function PenelusuranIKM() {
       ["No", "Layanan", "No. Dokumen", "Tahun", "Status"]
     ]
     layanan.forEach((l, i) => dataGabungan.push([i + 1, l.jenis_layanan, l.nomor_dokumen || "-", l.tahun_fasilitasi || "-", l.status_sertifikat || "-"]))
-    
     const ws1 = XLSX.utils.aoa_to_sheet(dataGabungan)
     XLSX.utils.book_append_sheet(wb, ws1, "Profil dan Layanan")
     XLSX.writeFile(wb, `DATA_IKM_${profile.no_nib}.xlsx`)
@@ -107,7 +105,6 @@ export default function PenelusuranIKM() {
 
   return (
     <div className="p-4 md:p-8 bg-[#F1F5F9] min-h-screen font-sans text-slate-900">
-      {/* HEADER SEARCH */}
       <div className="max-w-6xl mx-auto bg-indigo-950 p-8 md:p-12 rounded-[40px] shadow-2xl mb-8 border-b-[10px] border-indigo-600">
         <h1 className="text-3xl font-black text-white italic uppercase tracking-tighter mb-6 flex items-center gap-3">
           <span className="text-4xl">🔎</span> PENELUSURAN DATA IKM
@@ -117,29 +114,28 @@ export default function PenelusuranIKM() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Input Nama / NIB / NIK..."
-            className="flex-1 p-5 rounded-2xl font-bold text-lg outline-none border-4 border-transparent focus:border-indigo-400 shadow-2xl bg-indigo-900/50 text-white"
+            className="flex-1 p-5 rounded-2xl font-bold text-lg outline-none border-4 border-transparent focus:border-indigo-400 shadow-2xl bg-indigo-900/50 text-white placeholder:text-indigo-300/50"
           />
           <div className="flex gap-3">
-            <button type="submit" className="bg-indigo-500 text-white px-10 py-5 rounded-2xl font-black hover:bg-indigo-400 transition-all">TELUSURI</button>
-            <button type="button" onClick={handleReset} className="bg-rose-600 text-white px-8 py-5 rounded-2xl font-black hover:bg-rose-500 transition-all">RESET</button>
+            <button type="submit" className="bg-indigo-500 text-white px-10 py-5 rounded-2xl font-black hover:bg-indigo-400 transition-all shadow-lg active:scale-95 uppercase">TELUSURI</button>
+            <button type="button" onClick={handleReset} className="bg-rose-600 text-white px-8 py-5 rounded-2xl font-black hover:bg-rose-500 transition-all shadow-lg active:scale-95 uppercase">RESET</button>
           </div>
         </form>
       </div>
 
-      {loading && <div className="text-center py-20 animate-pulse text-indigo-950 font-black italic text-xl">🚀 Menghubungkan Database...</div>}
+      {loading && <div className="text-center py-20 animate-pulse text-indigo-950 font-black italic uppercase text-xl">🚀 Menghubungkan Database...</div>}
 
       {profile && (
         <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="flex justify-end gap-3">
-            <button onClick={exportExcel} className="bg-emerald-500 text-white px-6 py-3 rounded-xl font-black text-xs uppercase shadow-md">📊 EXCEL</button>
+            <button onClick={exportExcel} className="bg-emerald-500 text-white px-6 py-3 rounded-xl font-black text-xs uppercase shadow-md hover:bg-emerald-600 transition-all">📊 EXCEL</button>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* SIDEBAR PROFIL */}
             <div className="lg:col-span-1 bg-white p-8 rounded-[40px] shadow-xl border-2 border-slate-100 h-fit sticky top-8">
               <div className="w-20 h-20 bg-indigo-100 rounded-3xl flex items-center justify-center text-3xl mb-6 shadow-inner">👤</div>
               <h2 className="text-2xl font-black text-indigo-950 uppercase leading-tight">{profile.nama_lengkap}</h2>
-              <p className="text-[10px] font-black text-indigo-500 bg-indigo-50 inline-block px-3 py-1 rounded-lg mt-2 uppercase">Terverifikasi Binaan</p>
+              <p className="text-[10px] font-black text-indigo-500 bg-indigo-50 inline-block px-3 py-1 rounded-lg mt-2 uppercase tracking-widest">Terverifikasi Binaan</p>
               <div className="mt-8 space-y-5">
                 <DataDetail label="NIB" value={profile.no_nib} />
                 <DataDetail label="NIK" value={profile.nik} />
@@ -149,9 +145,7 @@ export default function PenelusuranIKM() {
               </div>
             </div>
 
-            {/* MAIN CONTENT */}
             <div className="lg:col-span-2 space-y-8">
-              {/* LAYANAN SECTION */}
               <div className="bg-white rounded-[40px] shadow-xl overflow-hidden border-2 border-slate-100">
                 <div className="bg-indigo-900 p-6 flex items-center gap-3">
                   <span className="text-xl">🏆</span>
@@ -160,19 +154,18 @@ export default function PenelusuranIKM() {
                 <div className="p-6 space-y-6">
                   {layanan.map((l, i) => (
                     <div key={i} className="p-6 bg-slate-50 rounded-[30px] border-l-[8px] border-indigo-500">
-                      <div className="flex justify-between items-center mb-4">
+                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
                         <div>
-                          <h4 className="font-black text-indigo-900 uppercase text-lg">{l.jenis_layanan}</h4>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase">Tahun Fasilitasi: {l.tahun_fasilitasi}</p>
+                          <h4 className="font-black text-indigo-900 uppercase text-lg tracking-tight">{l.jenis_layanan}</h4>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tahun Fasilitasi: {l.tahun_fasilitasi}</p>
                         </div>
-                        {/* HANYA MUNCUL JIKA MEREK */}
                         {l.jenis_layanan.toLowerCase().includes('merek') && (
                           <span className="px-4 py-1.5 rounded-full font-black text-[10px] uppercase bg-amber-100 text-amber-700 border border-amber-200">
                             {l.status_sertifikat || 'PROSES'}
                           </span>
                         )}
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
                           <p className="text-[9px] font-black text-slate-400 uppercase mb-1">No. Dokumen / Pendaftaran</p>
                           <p className="text-sm font-bold text-slate-700 font-mono">{l.nomor_dokumen || "-"}</p>
@@ -182,12 +175,20 @@ export default function PenelusuranIKM() {
                           <p className="text-sm font-bold text-slate-700">{l.tanggal_uji || l.tahun_fasilitasi || "-"}</p>
                         </div>
                       </div>
+                      {/* TOMBOL LAMPIRAN DIKEMBALIKAN DI SINI */}
+                      <div className="flex flex-wrap gap-3">
+                        {l.link_dokumen && l.link_dokumen !== "-" && (
+                          <a href={l.link_dokumen} target="_blank" rel="noopener noreferrer" className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase hover:bg-indigo-700 shadow-md flex items-center gap-2">📂 LIHAT SERTIFIKAT</a>
+                        )}
+                        {l.link_tambahan && l.link_tambahan !== "-" && (
+                          <a href={l.link_tambahan} target="_blank" rel="noopener noreferrer" className="bg-emerald-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase hover:bg-emerald-700 shadow-md flex items-center gap-2">📗 LINK TAMBAHAN</a>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* PELATIHAN SECTION - DENGAN URAIAN LENGKAP */}
               <div className="bg-white rounded-[40px] shadow-xl overflow-hidden border-2 border-slate-100">
                 <div className="bg-emerald-600 p-6 flex items-center gap-3">
                   <span className="text-xl">🎓</span>
@@ -195,25 +196,17 @@ export default function PenelusuranIKM() {
                 </div>
                 <div className="p-6 space-y-4">
                   {pelatihan.length > 0 ? pelatihan.map((p, i) => (
-                    <div key={i} className="p-6 bg-slate-50 rounded-[30px] border-l-[8px] border-emerald-500">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="flex-1">
-                          <h4 className="font-black text-indigo-950 uppercase text-base leading-tight">{p.nama_kegiatan}</h4>
-                          <div className="flex gap-4 mt-2">
-                             <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-1 rounded-md">
-                               <span>📅</span> {p.tahun_pelaksanaan}
-                             </div>
-                             <div className="flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded-md">
-                               <span>⏰</span> {p.waktu_pelaksanaan || "Waktu tidak terdata"}
-                             </div>
-                          </div>
+                    <div key={i} className="p-6 bg-slate-50 rounded-[30px] border-l-[8px] border-emerald-500 shadow-sm">
+                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-2">
+                        <h4 className="font-black text-indigo-950 uppercase text-base leading-tight">{p.nama_kegiatan}</h4>
+                        <div className="flex gap-2">
+                          <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 px-3 py-1 rounded-lg uppercase tracking-wider whitespace-nowrap">📅 {p.tahun_pelaksanaan}</span>
+                          <span className="text-[10px] font-black text-blue-700 bg-blue-100 px-3 py-1 rounded-lg uppercase tracking-wider whitespace-nowrap">⏰ {p.waktu_pelaksanaan || "-"}</span>
                         </div>
                       </div>
-                      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2 underline decoration-emerald-200">Deskripsi Kegiatan</label>
-                        <p className="text-xs text-slate-600 leading-relaxed font-medium italic">
-                          "{p.deskripsi_kegiatan || 'Tidak ada deskripsi tambahan untuk kegiatan ini.'}"
-                        </p>
+                      <div className="bg-white p-4 rounded-2xl border border-slate-100">
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2">Deskripsi Kegiatan</label>
+                        <p className="text-xs text-slate-600 italic leading-relaxed font-medium">"{p.deskripsi_kegiatan || 'Tidak ada uraian kegiatan.'}"</p>
                       </div>
                     </div>
                   )) : (
@@ -221,7 +214,6 @@ export default function PenelusuranIKM() {
                   )}
                 </div>
               </div>
-
             </div>
           </div>
         </div>
