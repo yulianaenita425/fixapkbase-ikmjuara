@@ -23,6 +23,28 @@ export default function DataLayananIKM() {
   const [searchTerm, setSearchTerm] = useState("")
   const [filterTahun, setFilterTahun] = useState("")
 
+  // Konfigurasi Label Dinamis berdasarkan jenis layanan (Sinkron dengan inputan)
+  const getFieldLabels = (layanan: string) => {
+    switch (layanan) {
+      case "Pendaftaran HKI Merek":
+        return { doc: "No. Pendaftaran HKI", link1: "Link Sertifikat (Drive)", link2: "Link Bukti Daftar (Drive)", year: "Tahun Fasilitasi" };
+      case "Pendaftaran Sertifikat Halal":
+        return { doc: "No. Sertifikat Halal", link1: "Link Sertifikat (Drive)", link2: "Logo Halal (Drive)", year: "Tahun Fasilitasi" };
+      case "Pendaftaran TKDN IK":
+        return { doc: "No. Sertifikat TKDN IK", link1: "Link Sertifikat (Drive)", link2: "-", year: "Tahun Terbit" };
+      case "Pendaftaran dan Pendampingan SIINas":
+        return { doc: "No. Akun SIINas", link1: "Link Bukti Akun (Drive)", link2: "-", year: "Tahun Registrasi" };
+      case "Pendaftaran Uji Nilai Gizi":
+        return { doc: "No. LHU Nilai Gizi", link1: "Link LHU (Drive)", link2: "Tanggal Hasil Uji", year: "Tahun Fasilitasi" };
+      case "Pendaftaran Kurasi Produk":
+        return { doc: "No. Sertifikat Kurasi", link1: "Link Sertifikat (Drive)", link2: "-", year: "Tahun Kurasi" };
+      default:
+        return { doc: "Nomor Dokumen", link1: "Link Utama", link2: "Link Tambahan", year: "Tahun" };
+    }
+  }
+
+  const labels = getFieldLabels(activeTab);
+
   useEffect(() => {
     fetchData()
   }, [activeTab])
@@ -45,8 +67,7 @@ export default function DataLayananIKM() {
       const ikm = item.ikm_binaan || {}
       const matchText = 
         (ikm.nama_lengkap || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (ikm.no_nib || "").includes(searchTerm) ||
-        (ikm.nik || "").includes(searchTerm)
+        (ikm.no_nib || "").includes(searchTerm)
       const matchYear = filterTahun === "" || item.tahun_fasilitasi?.toString() === filterTahun
       return matchText && matchYear
     })
@@ -56,12 +77,13 @@ export default function DataLayananIKM() {
     if (filteredData.length === 0) return alert("Tidak ada data untuk diekspor")
     const data = filteredData.map((d, i) => ({
         "No": i + 1,
-        "Nama Lengkap": d.ikm_binaan?.nama_lengkap || "-",
+        "Nama IKM": d.ikm_binaan?.nama_lengkap || "-",
         "NIB": d.ikm_binaan?.no_nib || "-",
-        "Tahun": d.tahun_fasilitasi || "-",
-        "Dokumen": d.nomor_dokumen || "-",
-        "Link Utama": d.link_dokumen || "-",
-        "Link Tambahan": d.link_tambahan || "-"
+        [labels.year]: d.tahun_fasilitasi || "-",
+        [labels.doc]: d.nomor_dokumen || "-",
+        "Status": d.status_sertifikat || "-",
+        [labels.link1]: d.link_dokumen || "-",
+        [labels.link2]: d.link_tambahan || "-"
     }))
     const ws = XLSX.utils.json_to_sheet(data)
     const wb = XLSX.utils.book_new()
@@ -136,7 +158,7 @@ export default function DataLayananIKM() {
               <th className="p-6 text-center w-20">NO</th>
               <th className="p-6">PROFIL IKM</th>
               <th className="p-6">DETAIL {activeTab.toUpperCase()}</th>
-              <th className="p-6 text-center">TAHUN</th>
+              <th className="p-6 text-center">{labels.year.toUpperCase()}</th>
               <th className="p-6 text-center">AKSI</th>
             </tr>
           </thead>
@@ -154,30 +176,32 @@ export default function DataLayananIKM() {
                     <div className="text-[10px] font-bold text-slate-500 mt-1 italic uppercase">NIB: {row.ikm_binaan?.no_nib}</div>
                   </td>
                   <td className="p-6">
-                    <div className="font-black text-slate-800 text-xs italic mb-2">{row.nomor_dokumen || "NOMOR BELUM TERBIT"}</div>
+                    <div className="font-black text-slate-800 text-xs italic mb-2">{row.nomor_dokumen || "NOMOR BELUM ADA"}</div>
                     <div className="flex flex-wrap gap-2">
                         {row.link_dokumen && (
-                            <a href={row.link_dokumen} target="_blank" className="text-[9px] font-black bg-indigo-600 text-white px-2 py-1 rounded hover:bg-indigo-800 transition-colors uppercase">🔗 Link Utama</a>
+                            <a href={row.link_dokumen} target="_blank" className="text-[9px] font-black bg-indigo-600 text-white px-2 py-1 rounded hover:bg-indigo-800 transition-colors uppercase">🔗 {labels.link1}</a>
                         )}
                         {row.link_tambahan && (
-                            <a href={row.link_tambahan} target="_blank" className="text-[9px] font-black bg-slate-600 text-white px-2 py-1 rounded hover:bg-slate-800 transition-colors uppercase">🔗 Link Tambahan</a>
+                            <a href={row.link_tambahan} target="_blank" className="text-[9px] font-black bg-slate-600 text-white px-2 py-1 rounded hover:bg-slate-800 transition-colors uppercase">🔗 {labels.link2}</a>
                         )}
                         {activeTab === "Pendaftaran HKI Merek" && (
-                            <div className={`text-[9px] font-black px-2 py-1 rounded uppercase ${row.status_sertifikat === 'Ditolak' ? 'bg-rose-100 text-rose-600' : 'bg-indigo-100 text-indigo-600'}`}>
+                            <div className={`text-[9px] font-black px-2 py-1 rounded uppercase ${row.status_sertifikat === 'Ditolak' ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}>
                                 STATUS: {row.status_sertifikat || "Proses"}
                             </div>
+                        )}
+                        {activeTab === "Pendaftaran Uji Nilai Gizi" && row.tanggal_uji && (
+                             <div className="text-[9px] font-black bg-amber-100 text-amber-700 px-2 py-1 rounded uppercase">
+                                Tgl Uji: {row.tanggal_uji}
+                             </div>
                         )}
                     </div>
                   </td>
                   <td className="p-6 text-center"><span className="bg-indigo-100 text-indigo-900 px-3 py-1 rounded-lg font-black text-xs">{row.tahun_fasilitasi}</span></td>
                   <td className="p-6">
                     <div className="flex justify-center gap-2">
-                      {row.link_dokumen && (
-                        <a href={row.link_dokumen} target="_blank" className="w-10 h-10 bg-emerald-50 text-emerald-600 border-2 border-emerald-100 rounded-xl flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-all shadow-sm" title="Buka Link">🌐</a>
-                      )}
                       <button onClick={() => setSelectedData({ type: 'view', data: row })} className="w-10 h-10 bg-white border-2 rounded-xl hover:bg-indigo-600 hover:text-white transition-all shadow-sm">👁️</button>
                       <button onClick={() => setSelectedData({ type: 'edit', data: row })} className="w-10 h-10 bg-white border-2 border-amber-300 rounded-xl hover:bg-amber-500 hover:text-white text-amber-500 transition-all shadow-sm">✏️</button>
-                      <button onClick={async () => { if(confirm("Hapus?")) { await supabase.from("layanan_ikm_juara").update({is_deleted: true}).eq('id', row.id); fetchData(); } }} className="w-10 h-10 bg-white border-2 border-rose-200 rounded-xl hover:bg-rose-600 hover:text-white text-rose-500 transition-all shadow-sm">🗑️</button>
+                      <button onClick={async () => { if(confirm("Hapus data ini?")) { await supabase.from("layanan_ikm_juara").update({is_deleted: true}).eq('id', row.id); fetchData(); } }} className="w-10 h-10 bg-white border-2 border-rose-200 rounded-xl hover:bg-rose-600 hover:text-white text-rose-500 transition-all shadow-sm">🗑️</button>
                     </div>
                   </td>
                 </tr>
@@ -200,15 +224,17 @@ export default function DataLayananIKM() {
                 nomor_dokumen: fd.get("nomor_dokumen"),
                 tahun_fasilitasi: fd.get("tahun_fasilitasi"),
                 link_dokumen: fd.get("link_dokumen"),
-                link_tambahan: fd.get("link_tambahan")
+                link_tambahan: fd.get("link_tambahan"),
+                tanggal_uji: fd.get("tanggal_uji") || null
               };
               if(activeTab === "Pendaftaran HKI Merek") payload.status_sertifikat = fd.get("status_sertifikat");
+              
               const { error } = await supabase.from("layanan_ikm_juara").update(payload).eq("id", selectedData.data.id);
               setIsSaving(false); 
-              if(!error) { setSelectedData(null); fetchData(); alert("Tersimpan!"); }
+              if(!error) { setSelectedData(null); fetchData(); alert("Data Berhasil Diperbarui!"); }
           }}>
             <div className="p-8 bg-indigo-900 text-white flex justify-between items-center">
-              <h2 className="font-black uppercase italic text-xl">{selectedData.type === 'view' ? 'Pratinjau' : 'Edit Data'}</h2>
+              <h2 className="font-black uppercase italic text-xl">{selectedData.type === 'view' ? 'Detail Layanan' : 'Edit Layanan'}</h2>
               <button type="button" onClick={() => setSelectedData(null)} className="font-black text-2xl hover:text-rose-400">✕</button>
             </div>
             <div className="p-8 space-y-4 max-h-[60vh] overflow-y-auto bg-slate-50">
@@ -216,13 +242,15 @@ export default function DataLayananIKM() {
                  <p className="text-[9px] font-black text-indigo-400 uppercase mb-1">Nama IKM Binaan</p>
                  <p className="font-black uppercase text-slate-800">{selectedData.data.ikm_binaan?.nama_lengkap}</p>
                </div>
+               
                <div className="grid grid-cols-2 gap-4">
-                 <InputPopup label="No. Dokumen" name="nomor_dokumen" val={selectedData.data.nomor_dokumen} isEdit={selectedData.type === 'edit'} />
-                 <InputPopup label="Tahun" name="tahun_fasilitasi" val={selectedData.data.tahun_fasilitasi} isEdit={selectedData.type === 'edit'} />
+                 <InputPopup label={labels.doc} name="nomor_dokumen" val={selectedData.data.nomor_dokumen} isEdit={selectedData.type === 'edit'} />
+                 <InputPopup label={labels.year} name="tahun_fasilitasi" val={selectedData.data.tahun_fasilitasi} isEdit={selectedData.type === 'edit'} type="number" />
                </div>
+
                {activeTab === "Pendaftaran HKI Merek" && (
                  <div className="flex flex-col">
-                   <label className="text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Status Sertifikat</label>
+                   <label className="text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Sertifikat Merek (Status)</label>
                    {selectedData.type === 'edit' ? (
                      <select name="status_sertifikat" defaultValue={selectedData.data.status_sertifikat} className="p-3 border-2 border-slate-200 rounded-xl font-bold bg-white">
                         <option value="Telah Didaftar">Telah Didaftar</option>
@@ -234,12 +262,17 @@ export default function DataLayananIKM() {
                    )}
                  </div>
                )}
-               <InputPopup label="Link Utama (Google Drive)" name="link_dokumen" val={selectedData.data.link_dokumen} isEdit={selectedData.type === 'edit'} />
-               <InputPopup label="Link Tambahan / Bukti" name="link_tambahan" val={selectedData.data.link_tambahan} isEdit={selectedData.type === 'edit'} />
+
+               {activeTab === "Pendaftaran Uji Nilai Gizi" && (
+                 <InputPopup label="Tanggal Hasil Uji" name="tanggal_uji" val={selectedData.data.tanggal_uji} isEdit={selectedData.type === 'edit'} type="date" />
+               )}
+
+               <InputPopup label={labels.link1} name="link_dokumen" val={selectedData.data.link_dokumen} isEdit={selectedData.type === 'edit'} />
+               <InputPopup label={labels.link2} name="link_tambahan" val={selectedData.data.link_tambahan} isEdit={selectedData.type === 'edit'} />
             </div>
             <div className="p-6 bg-white border-t-2">
               <button type={selectedData.type === 'edit' ? 'submit' : 'button'} onClick={() => selectedData.type === 'view' && setSelectedData(null)} className={`w-full p-4 rounded-2xl font-black uppercase tracking-widest shadow-lg transition-all ${selectedData.type === 'edit' ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-slate-800 text-white hover:bg-slate-900'}`}>
-                {selectedData.type === 'edit' ? (isSaving ? "MENYIMPAN..." : "SIMPAN PERUBAHAN") : "TUTUP JENDELA"}
+                {selectedData.type === 'edit' ? (isSaving ? "SEDANG MENYIMPAN..." : "UPDATE DATA") : "TUTUP"}
               </button>
             </div>
           </form>
@@ -249,12 +282,12 @@ export default function DataLayananIKM() {
   )
 }
 
-function InputPopup({ label, name, val, isEdit }: any) {
+function InputPopup({ label, name, val, isEdit, type = "text" }: any) {
   return (
     <div className="flex flex-col">
       <label className="text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">{label}</label>
       {isEdit ? (
-        <input name={name} defaultValue={val} className="p-3 border-2 border-slate-200 rounded-xl font-bold outline-none focus:border-indigo-500 bg-white text-slate-800" />
+        <input type={type} name={name} defaultValue={val} className="p-3 border-2 border-slate-200 rounded-xl font-bold outline-none focus:border-indigo-500 bg-white text-slate-800" />
       ) : (
         <div className="p-3 bg-slate-100 rounded-xl font-bold text-slate-500 text-sm border border-slate-200 break-all">{val || "-"}</div>
       )}
