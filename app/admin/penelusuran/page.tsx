@@ -32,7 +32,7 @@ export default function PenelusuranIKM() {
     setPelatihan([])
 
     try {
-      // 1. Cari Data Personal IKM (Berdasarkan NIB, NIK, atau Nama)
+      // 1. Cari Data Personal IKM
       const { data: dataIKM, error: errIKM } = await supabase
         .from("ikm_binaan")
         .select("*")
@@ -48,18 +48,19 @@ export default function PenelusuranIKM() {
 
       setProfile(dataIKM)
 
-// 2. Ambil Data Layanan Detail dari layanan_ikm_juara
-const { data: resLayanan, error: errLayanan } = await supabase
-  .from("layanan_ikm_juara") 
-  .select("jenis_layanan, no_pendaftaran, tahun, status, link_utama, link_tambahan") // Pastikan kolom ini sesuai database
-  .eq("ikm_id", dataIKM.id)
-  .order("tahun", { ascending: false });
+      // 2. Ambil Data Layanan Detail (Sinkronisasi Database Terbaru)
+      const { data: resLayanan, error: errLayanan } = await supabase
+        .from("layanan_ikm_juara") 
+        .select("jenis_layanan, nomor_dokumen, tahun_fasilitasi, status_sertifikat, link_dokumen, link_tambahan, tanggal_uji") 
+        .eq("ikm_id", dataIKM.id)
+        .eq("is_deleted", false)
+        .order("tahun_fasilitasi", { ascending: false });
 
-if (errLayanan) {
-  console.error("Gagal sinkronisasi layanan:", errLayanan.message);
-} else {
-  setLayanan(resLayanan || []);
-}
+      if (errLayanan) {
+        console.error("Gagal sinkronisasi layanan:", errLayanan.message);
+      } else {
+        setLayanan(resLayanan || []);
+      }
 
       // 3. Ambil Riwayat Pelatihan & Pemberdayaan
       const { data: resPelatihan, error: errPelatihan } = await supabase
@@ -75,7 +76,6 @@ if (errLayanan) {
         .eq("ikm_id", dataIKM.id)
 
       if (!errPelatihan && resPelatihan) {
-        // Flatting data agar lebih mudah diakses
         const formattedPelatihan = resPelatihan.map((p: any) => p.kegiatan_pelatihan)
         setPelatihan(formattedPelatihan)
       }
@@ -110,11 +110,17 @@ if (errLayanan) {
       ["Alamat", profile.alamat],
       [""],
       ["RIWAYAT LAYANAN IKM JUARA"],
-      ["No", "Jenis Layanan", "Detail/No. Dokumen", "Tahun", "Status"]
+      ["No", "Jenis Layanan", "No. Dokumen", "Tahun Fasilitasi", "Status"]
     ]
 
     layanan.forEach((l, i) => {
-      dataGabungan.push([i + 1, l.jenis_layanan, l.no_pendaftaran || l.nama_produk || "-", l.tahun, l.status])
+      dataGabungan.push([
+        i + 1, 
+        l.jenis_layanan, 
+        l.nomor_dokumen || "-", 
+        l.tahun_fasilitasi || "-", 
+        l.status_sertifikat || "PROSES"
+      ])
     })
 
     const ws1 = XLSX.utils.aoa_to_sheet(dataGabungan)
@@ -142,7 +148,7 @@ if (errLayanan) {
     doc.setFontSize(16)
     doc.text("PROFIL LENGKAP IKM BINAAN", 105, 15, { align: "center" })
 
-    // Data Personal
+    // 1. Tabel Data Personal
     autoTable(doc, {
       startY: 25,
       head: [['INFORMASI PERSONAL', 'DETAIL DATA']],
@@ -158,7 +164,23 @@ if (errLayanan) {
       headStyles: { fillColor: [49, 46, 129] }
     })
 
-    // Tabel Pelatihan
+    // 2. Tabel Layanan
+    const finalY1 = (doc as any).lastAutoTable.finalY + 10
+    doc.text("RIWAYAT LAYANAN IKM JUARA", 14, finalY1)
+    autoTable(doc, {
+      startY: finalY1 + 2,
+      head: [['No', 'Jenis Layanan', 'No. Dokumen', 'Tahun', 'Status']],
+      body: layanan.map((l, i) => [
+        i + 1, 
+        l.jenis_layanan, 
+        l.nomor_dokumen || "-", 
+        l.tahun_fasilitasi || "-",
+        l.status_sertifikat || "PROSES"
+      ]),
+      headStyles: { fillColor: [79, 70, 229] }
+    })
+
+    // 3. Tabel Pelatihan
     const finalY2 = (doc as any).lastAutoTable.finalY + 10
     doc.text("RIWAYAT PELATIHAN & PEMBERDAYAAN", 14, finalY2)
     autoTable(doc, {
@@ -173,20 +195,19 @@ if (errLayanan) {
 
   return (
     <div className="p-4 md:p-8 bg-[#F1F5F9] min-h-screen font-sans text-slate-900">
-      {/* SECTION PENCARIAN (INDIGO THEME) */}
+      {/* SECTION PENCARIAN */}
       <div className="max-w-6xl mx-auto bg-indigo-950 p-8 md:p-12 rounded-[40px] shadow-2xl mb-8 relative overflow-hidden border-b-[10px] border-indigo-600">
         <div className="relative z-10">
           <h1 className="text-3xl font-black text-white italic uppercase tracking-tighter mb-6 flex items-center gap-3">
             <span className="text-4xl">🔎</span> PENELUSURAN DATA IKM
           </h1>
           <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4">
-<input 
-  value={searchQuery}
-  onChange={(e) => setSearchQuery(e.target.value)}
-  placeholder="Input Nama Lengkap / No. NIB / No. NIK..."
-  // text-white adalah kunci agar tulisan berwarna putih
-  className="flex-1 p-5 rounded-2xl font-bold text-lg outline-none border-4 border-transparent focus:border-indigo-400 shadow-2xl bg-indigo-900/50 text-white placeholder:text-indigo-300/50"
-/>
+            <input 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Input Nama Lengkap / No. NIB / No. NIK..."
+              className="flex-1 p-5 rounded-2xl font-bold text-lg outline-none border-4 border-transparent focus:border-indigo-400 shadow-2xl bg-indigo-900/50 text-white placeholder:text-indigo-300/50"
+            />
             <div className="flex gap-3">
               <button type="submit" className="bg-indigo-500 text-white px-10 py-5 rounded-2xl font-black uppercase hover:bg-indigo-400 transition-all shadow-lg active:scale-95">TELUSURI</button>
               <button type="button" onClick={handleReset} className="bg-rose-600 text-white px-8 py-5 rounded-2xl font-black uppercase hover:bg-rose-500 transition-all shadow-lg active:scale-95">RESET</button>
@@ -232,115 +253,101 @@ if (errLayanan) {
 
             {/* DATA LAYANAN & PELATIHAN */}
             <div className="lg:col-span-2 space-y-8">
-{/* RINCIAN LAYANAN IKM JUARA */}
-<div className="bg-white rounded-[40px] shadow-xl overflow-hidden border-2 border-slate-100">
-  <div className="bg-indigo-900 p-6 flex items-center gap-3">
-    <span className="text-xl">🏆</span>
-    <h3 className="text-white font-black italic uppercase tracking-widest text-sm">Rincian Layanan IKM Juara</h3>
-  </div>
-  
-  <div className="p-6 space-y-6">
-    {layanan.length > 0 ? (
-      layanan.map((l, i) => (
-        <div key={i} className="group p-6 rounded-[32px] border-2 border-slate-50 bg-slate-50/50 hover:bg-white hover:border-indigo-100 transition-all mb-4">
-          
-          {/* JUDUL LAYANAN & STATUS */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-            <div>
-              <h4 className="font-black text-indigo-900 uppercase text-lg tracking-tight">
-                {l.jenis_layanan}
-              </h4>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                Tahun Fasilitasi: {l.tahun || '-'}
-              </p>
-            </div>
-            <span className={`px-4 py-1.5 rounded-full font-black text-[10px] uppercase border ${
-              l.status?.toLowerCase().includes('didaftar') || l.status?.toLowerCase().includes('selesai')
-                ? 'bg-emerald-100 text-emerald-700 border-emerald-200' 
-                : 'bg-amber-100 text-amber-700 border-amber-200'
-            }`}>
-              {l.status || 'PROSES'}
-            </span>
-          </div>
-
-          {/* DETAIL DINAMIS */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-              <p className="text-[9px] font-black text-slate-400 uppercase mb-1">
-                {l.jenis_layanan.includes('Uji Nilai Gizi') ? 'Nama Produk' : 'No. Dokumen / Pendaftaran'}
-              </p>
-              <p className="text-sm font-bold text-slate-700 font-mono">
-                {l.no_pendaftaran || "-"}
-              </p>
-            </div>
-            <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-              <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Tahun</p>
-              <p className="text-sm font-bold text-slate-700">{l.tahun || "-"}</p>
-            </div>
-          </div>
-
-          {/* LINK GOOGLE DRIVE */}
-          <div className="flex flex-wrap gap-3">
-            {l.link_utama && l.link_utama !== "-" ? (
-              <a href={l.link_utama} target="_blank" rel="noopener noreferrer" 
-                className="flex-1 md:flex-none text-center bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase hover:bg-indigo-700 flex items-center justify-center gap-2">
-                📂 LINK UTAMA (G-DRIVE)
-              </a>
-            ) : (
-              <div className="flex-1 md:flex-none text-center bg-slate-100 text-slate-400 px-6 py-3 rounded-2xl font-black text-[10px] uppercase border border-dashed border-slate-200">
-                🚫 Link Kosong
-              </div>
-            )}
-
-            {l.link_tambahan && l.link_tambahan !== "-" ? (
-              <a href={l.link_tambahan} target="_blank" rel="noopener noreferrer" 
-                className="flex-1 md:flex-none text-center bg-emerald-500 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase hover:bg-emerald-600 flex items-center justify-center gap-2">
-                📜 LINK TAMBAHAN / BUKTI
-              </a>
-            ) : (
-              <div className="flex-1 md:flex-none text-center bg-slate-100 text-slate-400 px-6 py-3 rounded-2xl font-black text-[10px] uppercase border border-dashed border-slate-200">
-                🚫 Bukti Kosong
-              </div>
-            )}
-          </div>
-        </div>
-      ))
-    ) : (
-      <div className="text-center py-10 italic text-slate-400 font-bold uppercase text-xs">
-        Belum ada riwayat layanan yang terdaftar.
-      </div>
-    )}
-  </div>
-
-          {/* RIWAYAT PELATIHAN */}
-          <div className="bg-white rounded-[40px] shadow-xl overflow-hidden border-2 border-slate-100">
-            <div className="bg-emerald-600 p-6 flex items-center gap-3">
-              <span className="text-xl">🎓</span>
-              <h3 className="text-white font-black italic uppercase tracking-widest text-sm">Riwayat Pelatihan & Pemberdayaan</h3>
-            </div>
-            <div className="p-6">
-              {pelatihan.length > 0 ? (
-                <div className="space-y-4">
-                  {pelatihan.map((p: any, i: number) => (
-                    <div key={i} className="p-6 bg-slate-50 rounded-[30px] border-l-[8px] border-emerald-500 hover:shadow-md transition-all">
-                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 mb-3">
-                        <h4 className="font-black text-indigo-950 uppercase text-sm">{p.nama_kegiatan}</h4>
-                        <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full uppercase">
-                          📅 {p.waktu_pelaksanaan} ({p.tahun_pelaksanaan})
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-600 leading-relaxed font-medium italic bg-white p-3 rounded-xl border border-slate-100">
-                        "{p.deskripsi_kegiatan || 'Tidak ada deskripsi detail untuk kegiatan ini.'}"
-                      </p>
-                    </div>
-                  ))}
+              <div className="bg-white rounded-[40px] shadow-xl overflow-hidden border-2 border-slate-100">
+                <div className="bg-indigo-900 p-6 flex items-center gap-3">
+                  <span className="text-xl">🏆</span>
+                  <h3 className="text-white font-black italic uppercase tracking-widest text-sm">Rincian Layanan IKM Juara</h3>
                 </div>
-              ) : (
-                <div className="text-center py-10 italic text-slate-400 font-bold">Belum ada riwayat pelatihan yang diikuti.</div>
-              )}
-            </div>
-          </div>
-        </div>
+                
+                <div className="p-6 space-y-6">
+                  {layanan.length > 0 ? (
+                    layanan.map((l, i) => (
+                      <div key={i} className="p-6 bg-slate-50 rounded-[30px] border-l-[8px] border-indigo-500">
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+                          <div>
+                            <h4 className="font-black text-indigo-900 uppercase text-lg tracking-tight">
+                              {l.jenis_layanan}
+                            </h4>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                              Tahun Fasilitasi: {l.tahun_fasilitasi || '-'}
+                            </p>
+                          </div>
+                          <span className={`px-4 py-1.5 rounded-full font-black text-[10px] uppercase border ${
+                            l.status_sertifikat?.toLowerCase().includes('didaftar') || l.status_sertifikat?.toLowerCase().includes('selesai')
+                              ? 'bg-emerald-100 text-emerald-700 border-emerald-200' 
+                              : 'bg-amber-100 text-amber-700 border-amber-200'
+                          }`}>
+                            {l.status_sertifikat || 'PROSES'}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                          <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                            <p className="text-[9px] font-black text-slate-400 uppercase mb-1">No. Dokumen / Pendaftaran</p>
+                            <p className="text-sm font-bold text-slate-700 font-mono">
+                              {l.nomor_dokumen || "-"}
+                            </p>
+                          </div>
+                          <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                            <p className="text-[9px] font-black text-slate-400 uppercase mb-1">
+                              {l.jenis_layanan.includes('Gizi') ? 'Tanggal Hasil Uji' : 'Tahun'}
+                            </p>
+                            <p className="text-sm font-bold text-slate-700">
+                              {l.tanggal_uji || l.tahun_fasilitasi || "-"}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-3">
+                          {l.link_dokumen && l.link_dokumen !== "-" && (
+                            <a href={l.link_dokumen} target="_blank" rel="noopener noreferrer" className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase hover:bg-indigo-700">
+                              📂 LIHAT SERTIFIKAT
+                            </a>
+                          )}
+                          {l.link_tambahan && l.link_tambahan !== "-" && (
+                            <a href={l.link_tambahan} target="_blank" rel="noopener noreferrer" className="bg-emerald-500 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase hover:bg-emerald-600">
+                              📜 LINK TAMBAHAN
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-10 italic text-slate-400 font-bold uppercase text-xs">
+                      Belum ada riwayat layanan yang terdaftar.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* RIWAYAT PELATIHAN */}
+              <div className="bg-white rounded-[40px] shadow-xl overflow-hidden border-2 border-slate-100">
+                <div className="bg-emerald-600 p-6 flex items-center gap-3">
+                  <span className="text-xl">🎓</span>
+                  <h3 className="text-white font-black italic uppercase tracking-widest text-sm">Riwayat Pelatihan & Pemberdayaan</h3>
+                </div>
+                <div className="p-6">
+                  {pelatihan.length > 0 ? (
+                    <div className="space-y-4">
+                      {pelatihan.map((p: any, i: number) => (
+                        <div key={i} className="p-6 bg-slate-50 rounded-[30px] border-l-[8px] border-emerald-500 hover:shadow-md transition-all">
+                          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 mb-3">
+                            <h4 className="font-black text-indigo-950 uppercase text-sm">{p.nama_kegiatan}</h4>
+                            <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full uppercase">
+                              📅 {p.waktu_pelaksanaan} ({p.tahun_pelaksanaan})
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-600 leading-relaxed font-medium italic bg-white p-3 rounded-xl border border-slate-100">
+                            "{p.deskripsi_kegiatan || 'Tidak ada deskripsi detail untuk kegiatan ini.'}"
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-10 italic text-slate-400 font-bold">Belum ada riwayat pelatihan yang diikuti.</div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
