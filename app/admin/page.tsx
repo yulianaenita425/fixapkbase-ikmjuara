@@ -30,7 +30,7 @@ export default function AdminDashboard() {
     dataLayanan: 0,
     layananAktif: 0,
     pelatihan: 0,
-    peserta: 0, // State baru untuk peserta
+    peserta: 0,
     deleted: 0
   })
   const [loading, setLoading] = useState(true)
@@ -43,37 +43,36 @@ export default function AdminDashboard() {
     try {
       setLoading(true)
       
-      // Ambil jumlah data dengan filter yang sudah dikoreksi
-      const [ikm, dataLayanan, layananAktif, pelatihan, peserta, deleted] = await Promise.all([
-        // 1. IKM Binaan (Hanya yang tidak dihapus)
+      const [ikm, layanan, pelatihan, peserta] = await Promise.all([
+        // 1. IKM Binaan (Aktif - Tidak terhapus)
         supabase.from("ikm_binaan").select("*", { count: 'exact', head: true }).is('deleted_at', null),
         
-        // 2. Master Data Layanan (Total semua jenis layanan aktif)
-        supabase.from("data_layanan").select("*", { count: 'exact', head: true }).is('deleted_at', null),
+        // 2. Layanan IKM Juara (Aktif - Menggunakan tabel yang benar)
+        supabase.from("layanan_ikm_juara").select("*", { count: 'exact', head: true }).is('deleted_at', null),
         
-        // 3. Layanan IKM Juara (Contoh: Menghitung kategori spesifik atau status tertentu)
-        supabase.from("data_layanan").select("*", { count: 'exact', head: true }).is('deleted_at', null),
-        
-        // 4. Kegiatan Pelatihan (Hanya yang tidak dihapus)
+        // 3. Kegiatan Pelatihan (Aktif - Tidak terhapus)
         supabase.from("kegiatan_pelatihan").select("*", { count: 'exact', head: true }).is('deleted_at', null),
 
-        // 5. Peserta Pelatihan (Total peserta terinput di tabel peserta)
+        // 4. Total Peserta Pelatihan (Seluruh Peserta terinput)
         supabase.from("peserta_pelatihan").select("*", { count: 'exact', head: true }),
-        
-        // 6. Recycle Bin (Total data dari tabel utama yang memiliki deleted_at)
-        supabase.from("ikm_binaan").select("*", { count: 'exact', head: true }).not('deleted_at', 'is', null)
       ])
+
+      // 5. Hitung Data Terhapus (Recycle Bin) dari tabel IKM sebagai sampel utama
+      const { count: countDeleted } = await supabase
+        .from("ikm_binaan")
+        .select("*", { count: 'exact', head: true })
+        .not('deleted_at', 'is', null)
 
       setStats({
         ikm: ikm.count || 0,
-        dataLayanan: dataLayanan.count || 0,
-        layananAktif: layananAktif.count || 0,
+        dataLayanan: layanan.count || 0, 
+        layananAktif: layanan.count || 0, 
         pelatihan: pelatihan.count || 0,
         peserta: peserta.count || 0,
-        deleted: deleted.count || 0
+        deleted: countDeleted || 0
       })
     } catch (error) {
-      console.error("Error fetching stats:", error)
+      console.error("Gagal memuat statistik:", error)
     } finally {
       setLoading(false)
     }
@@ -90,7 +89,7 @@ export default function AdminDashboard() {
           <p className="text-slate-500 font-medium">Selamat datang kembali! Berikut adalah ringkasan data sistem saat ini.</p>
         </div>
 
-        {/* Info Utama - Grid 3 kolom */}
+        {/* Info Utama - Grid Statistik */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
           <StatCard 
             title="IKM Binaan (Aktif)" 
@@ -147,7 +146,9 @@ export default function AdminDashboard() {
               </button>
             </Link>
           </div>
+          {/* Dekorasi Background */}
           <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/4 w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/4 w-64 h-64 bg-indigo-400/10 rounded-full blur-2xl"></div>
         </div>
 
         {/* Footer */}
