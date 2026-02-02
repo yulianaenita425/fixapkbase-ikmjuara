@@ -117,3 +117,34 @@ input:focus, textarea:focus {
   border-color: #4f46e5;
   box-shadow: 0 0 0 3px rgba(79,70,229,0.2);
 }
+/* --- Tambahan untuk Tema Dashboard IKM JUARA --- */
+
+/* Gaya Scrollbar ala Dashboard Control Center */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1A1A40; /* Warna Navy sesuai sidebar dashboard */
+}
+
+::-webkit-scrollbar-thumb {
+  background: #4F46E5; /* Warna ungu/biru terang untuk indikator */
+  border-radius: 10px;
+}
+
+/* Modifikasi sedikit background body agar matching dengan dashboard */
+body {
+  background: #F0F4F8; /* Warna abu-abu kebiruan terang yang bersih */
+  color: #1A1A40;
+}
+
+/* Pastikan utility Tailwind tetap bisa digunakan */
+@layer utilities {
+  .text-dashboard-navy {
+    color: #1A1A40;
+  }
+  .bg-dashboard-navy {
+    background-color: #1A1A40;
+  }
+}
