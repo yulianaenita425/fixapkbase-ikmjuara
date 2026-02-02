@@ -1,49 +1,159 @@
-'use client'
-import { useState } from 'react'
-import { supabase } from '@/lib/supabaseClient'
-import { useRouter } from 'next/navigation'
+"use client";
+import { useState, useEffect, useRef } from 'react';
+import { supabase } from '@/lib/supabaseClient';
+import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const router = useRouter()
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const handleLogin = async () => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+  // Efek Partikel Digital Neural Network
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-    if (error) {
-      alert('Login gagal: ' + error.message)
-    } else {
-      router.push('/admin')
+    let particles: any[] = [];
+    const particleCount = 60;
+
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+
+    class Particle {
+      x: number; y: number; vx: number; vy: number;
+      constructor() {
+        this.x = Math.random() * canvas!.width;
+        this.y = Math.random() * canvas!.height;
+        this.vx = (Math.random() - 0.5) * 0.5;
+        this.vy = (Math.random() - 0.5) * 0.5;
+      }
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        if (this.x < 0 || this.x > canvas!.width) this.vx *= -1;
+        if (this.y < 0 || this.y > canvas!.height) this.vy *= -1;
+      }
     }
-  }
+
+    for (let i = 0; i < particleCount; i++) particles.push(new Particle());
+
+    const animate = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "rgba(99, 102, 241, 0.5)";
+      ctx.strokeStyle = "rgba(99, 102, 241, 0.1)";
+
+      particles.forEach((p, i) => {
+        p.update();
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        for (let j = i + 1; j < particles.length; j++) {
+          const p2 = particles[j];
+          const dist = Math.hypot(p.x - p2.x, p.y - p2.y);
+          if (dist < 150) {
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
+          }
+        }
+      });
+      requestAnimationFrame(animate);
+    };
+
+    window.addEventListener('resize', resize);
+    resize();
+    animate();
+    return () => window.removeEventListener('resize', resize);
+  }, []);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      alert('Akses Ditolak: ' + error.message);
+      setLoading(false);
+    } else {
+      router.push('/admin');
+    }
+  };
 
   return (
-    <div className="flex h-screen items-center justify-center">
-      <div className="bg-white p-8 rounded-xl shadow-md w-80">
-        <h1 className="text-xl font-bold mb-4 text-center">Login Master Admin</h1>
-        <input
-          type="email"
-          placeholder="Email"
-          className="border p-2 w-full mb-3"
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          className="border p-2 w-full mb-3"
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        <button
-          onClick={handleLogin}
-          className="bg-blue-600 text-white w-full p-2 rounded"
-        >
-          Login
-        </button>
+    <div className="relative min-h-screen w-full flex items-center justify-center bg-[#020617] overflow-hidden">
+      
+      {/* Canvas Partikel */}
+      <canvas ref={canvasRef} className="absolute inset-0 z-0 opacity-60" />
+
+      {/* Background Glows */}
+      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-600/10 rounded-full blur-[120px] z-0"></div>
+
+      <div className="relative z-10 w-full max-w-md px-6 animate-fadeIn">
+        <div className="bg-slate-900/40 backdrop-blur-3xl border border-white/10 rounded-[3rem] p-8 md:p-12 shadow-[0_0_100px_rgba(0,0,0,1)]">
+          
+          <div className="text-center mb-10">
+            <div className="inline-block p-4 bg-white rounded-3xl shadow-[0_0_30px_rgba(255,255,255,0.2)] mb-6 animate-float">
+              <Image src="/Laura joss.png" alt="Logo" width={70} height={70} />
+            </div>
+            <h1 className="text-4xl font-black text-white italic tracking-tighter leading-none">
+              IKM <span className="text-indigo-500">JUARA</span>
+            </h1>
+            <p className="text-slate-500 text-[10px] font-black uppercase tracking-[5px] mt-3">Terminal Access v2.0</p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-6">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest ml-2">Internal Identity</label>
+              <input
+                required type="email"
+                placeholder="admin@madiun.go.id"
+                className="w-full px-6 py-4 bg-black/20 border border-white/5 rounded-2xl text-white outline-none focus:border-indigo-500 transition-all font-medium"
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest ml-2">Access Key</label>
+              <input
+                required type="password"
+                placeholder="••••••••"
+                className="w-full px-6 py-4 bg-black/20 border border-white/5 rounded-2xl text-white outline-none focus:border-indigo-500 transition-all font-medium"
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+
+            <button
+              disabled={loading}
+              type="submit"
+              className="w-full group relative py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase text-xs tracking-[4px] shadow-2xl hover:bg-indigo-500 transition-all active:scale-95 disabled:opacity-50 overflow-hidden"
+            >
+              <span className="relative z-10">{loading ? 'Processing...' : 'INITIALIZE SYSTEM'}</span>
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-shimmer" />
+            </button>
+          </form>
+        </div>
+        
+        <p className="mt-8 text-center text-slate-600 text-[10px] font-bold uppercase tracking-widest">
+          Secure Encrypted Connection • Madiun Industrial Center
+        </p>
       </div>
+
+      <style jsx global>{`
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+        .animate-float { animation: float 5s ease-in-out infinite; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fadeIn { animation: fadeIn 1s ease-out forwards; }
+        @keyframes shimmer { 100% { transform: translateX(100%); } }
+        .animate-shimmer { animation: shimmer 2s infinite; }
+      `}</style>
     </div>
-  )
+  );
 }
