@@ -17,7 +17,7 @@ function StatCard({ title, count, icon, color, link }: { title: string, count: n
         </div>
         <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[2px] mb-1">{title}</h3>
         <div className="text-3xl font-black text-indigo-950">
-          {count.toLocaleString()} <span className="text-xs font-bold text-slate-400">Data</span>
+          {typeof count === 'number' ? count.toLocaleString() : count} <span className="text-xs font-bold text-slate-400">{typeof count === 'number' ? 'Data' : ''}</span>
         </div>
       </div>
     </Link>
@@ -30,6 +30,7 @@ export default function AdminDashboard() {
     dataLayanan: 0,
     layananAktif: 0,
     pelatihan: 0,
+    peserta: 0, // State baru untuk peserta
     deleted: 0
   })
   const [loading, setLoading] = useState(true)
@@ -42,13 +43,25 @@ export default function AdminDashboard() {
     try {
       setLoading(true)
       
-      // Ambil jumlah data dari masing-masing tabel secara paralel
-      const [ikm, dataLayanan, layananAktif, pelatihan, deleted] = await Promise.all([
-        supabase.from("ikm_binaan").select("*", { count: 'exact', head: true }),
-        supabase.from("layanan_ikm_juara").select("*", { count: 'exact', head: true }),
-        supabase.from("layanan_ikm_juara").select("*", { count: 'exact', head: true }).eq("is_deleted", false),
-        supabase.from("kegiatan_pelatihan").select("*", { count: 'exact', head: true }),
-        supabase.from("layanan_ikm_juara").select("*", { count: 'exact', head: true }).eq("is_deleted", true)
+      // Ambil jumlah data dengan filter yang sudah dikoreksi
+      const [ikm, dataLayanan, layananAktif, pelatihan, peserta, deleted] = await Promise.all([
+        // 1. IKM Binaan (Hanya yang tidak dihapus)
+        supabase.from("ikm_binaan").select("*", { count: 'exact', head: true }).is('deleted_at', null),
+        
+        // 2. Master Data Layanan (Total semua jenis layanan aktif)
+        supabase.from("data_layanan").select("*", { count: 'exact', head: true }).is('deleted_at', null),
+        
+        // 3. Layanan IKM Juara (Contoh: Menghitung kategori spesifik atau status tertentu)
+        supabase.from("data_layanan").select("*", { count: 'exact', head: true }).is('deleted_at', null),
+        
+        // 4. Kegiatan Pelatihan (Hanya yang tidak dihapus)
+        supabase.from("kegiatan_pelatihan").select("*", { count: 'exact', head: true }).is('deleted_at', null),
+
+        // 5. Peserta Pelatihan (Total peserta terinput di tabel peserta)
+        supabase.from("peserta_pelatihan").select("*", { count: 'exact', head: true }),
+        
+        // 6. Recycle Bin (Total data dari tabel utama yang memiliki deleted_at)
+        supabase.from("ikm_binaan").select("*", { count: 'exact', head: true }).not('deleted_at', 'is', null)
       ])
 
       setStats({
@@ -56,6 +69,7 @@ export default function AdminDashboard() {
         dataLayanan: dataLayanan.count || 0,
         layananAktif: layananAktif.count || 0,
         pelatihan: pelatihan.count || 0,
+        peserta: peserta.count || 0,
         deleted: deleted.count || 0
       })
     } catch (error) {
@@ -76,10 +90,10 @@ export default function AdminDashboard() {
           <p className="text-slate-500 font-medium">Selamat datang kembali! Berikut adalah ringkasan data sistem saat ini.</p>
         </div>
 
-        {/* Info Utama */}
+        {/* Info Utama - Grid 3 kolom */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
           <StatCard 
-            title="IKM Binaan" 
+            title="IKM Binaan (Aktif)" 
             count={stats.ikm} 
             icon="👥" 
             color="bg-blue-100" 
@@ -100,18 +114,18 @@ export default function AdminDashboard() {
             link="/admin/layanan" 
           />
           <StatCard 
-            title="Kegiatan Pelatihan" 
+            title="Pelatihan Industri" 
             count={stats.pelatihan} 
             icon="🎓" 
             color="bg-emerald-100" 
             link="/admin/kegiatan-pelatihan" 
           />
           <StatCard 
-            title="Penelusuran Data" 
-            count="Cek" 
-            icon="🔎" 
-            color="bg-indigo-100" 
-            link="/admin/penelusuran" 
+            title="Total Peserta Terinput" 
+            count={stats.peserta} 
+            icon="📝" 
+            color="bg-orange-100" 
+            link="/admin/kegiatan-pelatihan" 
           />
           <StatCard 
             title="Recycle Bin" 
@@ -122,20 +136,18 @@ export default function AdminDashboard() {
           />
         </div>
 
-        {/* Quick Action / Welcome Banner */}
-        <div className="bg-indigo-950 rounded-[40px] p-8 md:p-12 text-white relative overflow-hidden shadow-2xl border-b-[10px] border-indigo-600">
+        {/* Banner Penelusuran */}
+        <div className="bg-indigo-950 rounded-[40px] p-8 md:p-12 text-white relative overflow-hidden shadow-2xl border-b-[10px] border-indigo-600 mb-10">
           <div className="relative z-10">
-            <h2 className="text-2xl md:text-3xl font-black mb-4 uppercase italic">Siap mengelola data hari ini?</h2>
-            <p className="text-indigo-200 mb-8 max-w-xl font-medium">Gunakan fitur Penelusuran untuk mencari profil lengkap IKM atau kelola layanan melalui menu yang tersedia di atas.</p>
+            <h2 className="text-2xl md:text-3xl font-black mb-4 uppercase italic">Cari Data IKM?</h2>
+            <p className="text-indigo-200 mb-8 max-w-xl font-medium">Gunakan fitur Penelusuran untuk mencari profil lengkap IKM berdasarkan nama, produk, atau wilayah.</p>
             <Link href="/admin/penelusuran">
               <button className="bg-white text-indigo-950 px-8 py-4 rounded-2xl font-black uppercase text-sm hover:bg-indigo-100 transition-all shadow-lg active:scale-95">
                 Mulai Penelusuran 🔎
               </button>
             </Link>
           </div>
-          {/* Dekorasi Background */}
           <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/4 w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/4 w-64 h-64 bg-indigo-400/10 rounded-full blur-2xl"></div>
         </div>
 
         {/* Footer */}

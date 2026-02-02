@@ -6,9 +6,9 @@ import { usePathname } from "next/navigation"
 const menuItems = [
   { name: "Dashboard", path: "/admin", icon: "📊" },
   { name: "IKM Binaan", path: "/admin/ikm-binaan", icon: "👥" },
-  { name: "Master Data", path: "/admin/data-layanan", icon: "📂" },
-  { name: "Layanan Juara", path: "/admin/layanan", icon: "🏆" },
-  { name: "Pelatihan", path: "/admin/kegiatan-pelatihan", icon: "🎓" },
+  { name: "Layanan IKM Juara", path: "/admin/layanan", icon: "🏆" },
+  { name: "Master Data IKM Juara", path: "/admin/data-layanan", icon: "📂" },
+  { name: "Pelatihan Industri", path: "/admin/kegiatan-pelatihan", icon: "🎓" },
   { name: "Penelusuran", path: "/admin/penelusuran", icon: "🔎" },
   { name: "Recycle Bin", path: "/admin/recycle-bin", icon: "🗑️" },
 ]
