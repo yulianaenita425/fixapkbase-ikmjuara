@@ -2,24 +2,25 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
-  // 1. Ambil token dari cookie 'sb-access-token'
+  // 1. Ambil token dari cookie (Sesuaikan nama ini dengan yang ada di browser Anda)
+  // Berdasarkan kode Anda sebelumnya: 'sb-access-token'
   const token = request.cookies.get('sb-access-token')?.value;
   const { pathname } = request.nextUrl;
 
   // 2. PROTEKSI HALAMAN ADMIN
-  // Jika mencoba masuk ke folder /admin tapi TIDAK ada token di cookie
+  // Jika akses /admin tapi tidak punya token
   if (pathname.startsWith('/admin')) {
     if (!token) {
-      // Tendang paksa balik ke halaman login
+      // Redirect ke login
       return NextResponse.redirect(new URL('/login', request.url));
     }
   }
 
   // 3. PROTEKSI HALAMAN LOGIN (REVERSE AUTH)
-  // Jika sudah login (punya token) tapi iseng buka halaman /login lagi
-  if (pathname.startsWith('/login')) {
+  // Jika sudah punya token tapi mau buka halaman login
+  if (pathname === '/login') {
     if (token) {
-      // Lempar otomatis ke dashboard admin
+      // Lempar balik ke admin dashboard
       return NextResponse.redirect(new URL('/admin', request.url));
     }
   }
@@ -28,10 +29,9 @@ export function middleware(request: NextRequest) {
 }
 
 // 4. KONFIGURASI MATCHER
-// Menentukan rute mana saja yang akan diproses oleh middleware ini
 export const config = {
   matcher: [
-    '/admin/:path*', // Semua halaman di dalam folder admin
-    '/login',        // Halaman login itu sendiri
+    '/admin/:path*', 
+    '/login',
   ],
 };
