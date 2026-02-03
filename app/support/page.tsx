@@ -1,10 +1,9 @@
 "use client";
 
 import React, { useState } from 'react';
-import { supabase } from '@/lib/supabase'; // Sesuaikan dengan lokasi file config Anda
+import { supabase } from '@/lib/supabase';
 import { 
-  FileText, MessageSquare, Mail, 
-  Clock, ChevronRight, HelpCircle, 
+  FileText, Clock, ChevronRight, 
   Download, Send, Search, 
   Loader2, CheckCircle2, AlertCircle, X,
   User, Building2
@@ -89,8 +88,8 @@ const TrackingTicket = () => {
 
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
               <p className="text-xs font-semibold text-slate-700 mb-1">{statusData.subject}</p>
-              <p className="text-[11px] text-slate-500 italic">"{statusData.admin_update}"</p>
-              <p className="text-[9px] text-slate-400 mt-3">Terakhir update: {new Date(statusData.updated_at).toLocaleDateString('id-ID')}</p>
+              <p className="text-[11px] text-slate-500 italic">"{statusData.admin_update || 'Belum ada update dari admin.'}"</p>
+              <p className="text-[9px] text-slate-400 mt-3">Update: {new Date(statusData.updated_at).toLocaleDateString('id-ID')}</p>
             </div>
             <button onClick={() => {setStatusData(null); setTicketId('');}} className="w-full text-xs text-blue-600 font-medium hover:underline">Cari Tiket Lain</button>
           </div>
@@ -117,6 +116,7 @@ const SupportPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [resultTicket, setResultTicket] = useState<string | null>(null);
 
+  // Fungsi pengiriman tiket yang sudah diintegrasikan dengan kolom admin_update
   const handleSubmitTicket = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -132,14 +132,16 @@ const SupportPage = () => {
           ikm_name: formData.get('ikmName'),
           subject: formData.get('subject'),
           description: formData.get('description'),
-          status: 'Open'
+          status: 'Open',
+          admin_update: 'Tiket berhasil dibuat. Menunggu respon admin.' // Default message
         }
       ]);
 
       if (error) throw error;
       setResultTicket(ticketNo);
-    } catch (err) {
-      alert('Gagal mengirim aduan. Coba lagi nanti.');
+    } catch (err: any) {
+      console.error("Detail Error:", err.message);
+      alert('Gagal mengirim aduan. Pastikan koneksi stabil.');
     } finally {
       setIsSubmitting(false);
     }
@@ -154,7 +156,7 @@ const SupportPage = () => {
             <div className="bg-indigo-900 p-6 text-white flex justify-between items-center">
               <div>
                 <h2 className="text-xl font-bold">Buat Tiket Bantuan</h2>
-                <p className="text-indigo-200 text-xs">Admin kami akan merespon via email.</p>
+                <p className="text-indigo-200 text-xs">Admin akan segera merespon kendala Anda.</p>
               </div>
               <button onClick={() => {setIsFormOpen(false); setResultTicket(null);}} className="p-2 hover:bg-white/10 rounded-full transition-colors"><X size={20} /></button>
             </div>
@@ -165,11 +167,17 @@ const SupportPage = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
                       <label className="text-xs font-bold text-slate-500 ml-1">Nama Lengkap</label>
-                      <div className="relative"><User className="absolute left-3 top-3 text-slate-400" size={18} /><input required name="fullName" type="text" className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm" placeholder="Andi Pratama" /></div>
+                      <div className="relative">
+                        <User className="absolute left-3 top-3 text-slate-400" size={18} />
+                        <input required name="fullName" type="text" className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm" placeholder="Andi Pratama" />
+                      </div>
                     </div>
                     <div className="space-y-1">
                       <label className="text-xs font-bold text-slate-500 ml-1">Nama IKM</label>
-                      <div className="relative"><Building2 className="absolute left-3 top-3 text-slate-400" size={18} /><input required name="ikmName" type="text" className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm" placeholder="IKM Madiun Jaya" /></div>
+                      <div className="relative">
+                        <Building2 className="absolute left-3 top-3 text-slate-400" size={18} />
+                        <input required name="ikmName" type="text" className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm" placeholder="IKM Madiun Jaya" />
+                      </div>
                     </div>
                   </div>
                   <div className="space-y-1">
@@ -190,8 +198,8 @@ const SupportPage = () => {
                     <CheckCircle2 size={40} />
                   </div>
                   <h3 className="text-xl font-bold text-slate-800">Aduan Terkirim!</h3>
-                  <p className="text-slate-500 text-sm mt-2">Nomor Tiket Anda: <span className="font-mono font-bold text-indigo-600">{resultTicket}</span></p>
-                  <p className="text-[10px] text-slate-400 mt-4 italic">Simpan nomor ini untuk melacak status aduan Anda.</p>
+                  <p className="text-slate-500 text-sm mt-2">Nomor Tiket: <span className="font-mono font-bold text-indigo-600">{resultTicket}</span></p>
+                  <p className="text-[10px] text-slate-400 mt-4 italic">Harap simpan nomor tiket untuk pengecekan status berkala.</p>
                 </div>
               )}
             </div>
@@ -199,54 +207,31 @@ const SupportPage = () => {
         </div>
       )}
 
-      {/* Hero Section */}
+      {/* Hero & Content */}
       <div className="bg-gradient-to-br from-indigo-900 via-blue-800 to-blue-700 py-24 px-4 text-center text-white">
-        <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-4xl md:text-6xl font-extrabold mb-4 tracking-tight">Kami Siap Mendampingi Anda</h1>
-          <p className="text-blue-100 text-lg md:text-xl max-w-2xl mx-auto mb-8">IKM JUARA – Dari Lokal Berkarya, ke Global Berdaya!</p>
-          <div className="max-w-xl mx-auto relative group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
-            <input type="text" placeholder="Cari panduan cepat..." className="w-full py-4 pl-12 pr-4 rounded-full text-slate-900 focus:outline-none focus:ring-4 focus:ring-blue-400/50 shadow-2xl transition-all" />
-          </div>
-        </div>
+        <h1 className="text-4xl md:text-6xl font-extrabold mb-4">Kami Siap Mendampingi Anda</h1>
+        <p className="text-blue-100 text-lg md:text-xl mb-8">IKM JUARA – Dari Lokal Berkarya, ke Global Berdaya!</p>
       </div>
 
       <main className="max-w-6xl mx-auto px-4 py-12">
-        {/* Content... (Sama seperti sebelumnya) */}
-        <div className="grid md:grid-cols-3 gap-6 -mt-24">
-          {[
-            { title: "Kendala Akun", desc: "Daftar, login, dan lupa sandi.", color: "bg-blue-100 text-blue-600" },
-            { title: "Legalitas", desc: "NIB, Sertifikasi, dan Izin.", color: "bg-orange-100 text-orange-600" },
-            { title: "Konsultasi", desc: "Jadwal dan materi pendamping.", color: "bg-green-100 text-green-600" },
-          ].map((item, i) => (
-            <div key={i} className="bg-white p-8 rounded-2xl shadow-xl border border-slate-100">
-              <div className={`w-12 h-12 ${item.color} rounded-xl flex items-center justify-center mb-4 font-bold tracking-tighter`}>IKM</div>
-              <h3 className="text-lg font-bold mb-2">{item.title}</h3>
-              <p className="text-slate-500 text-sm leading-relaxed">{item.desc}</p>
+        <div className="grid lg:grid-cols-3 gap-10">
+          <div className="lg:col-span-2">
+            <h2 className="text-2xl font-bold mb-6 flex items-center gap-3"><FileText className="text-blue-600" /> Pusat Panduan</h2>
+            <div className="grid sm:grid-cols-2 gap-4">
+              {["Daftar Akun", "Profil Usaha", "Layanan Konsultasi", "Keamanan Akun"].map((t, i) => (
+                <div key={i} className="flex items-center justify-between p-5 bg-white border border-slate-200 rounded-2xl cursor-pointer hover:bg-blue-50 transition-all">
+                  <span className="text-sm font-bold text-slate-700">{t}</span>
+                  <Download size={18} className="text-slate-300" />
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-
-        <div className="grid lg:grid-cols-3 gap-10 mt-20">
-          <div className="lg:col-span-2 space-y-8">
-            <section>
-              <h2 className="text-2xl font-bold mb-6 flex items-center gap-3 text-indigo-950"><FileText className="text-blue-600" /> Pusat Panduan</h2>
-              <div className="grid sm:grid-cols-2 gap-4">
-                {["Daftar Akun", "Profil Usaha", "Layanan Konsultasi", "Keamanan Akun"].map((t, i) => (
-                  <button key={i} className="flex items-center justify-between p-5 bg-white border border-slate-200 rounded-2xl hover:bg-blue-50 transition-all group">
-                    <div className="flex items-center gap-3 text-sm font-bold text-slate-700"><FileText size={18} className="text-slate-400" /> {t}</div>
-                    <Download size={18} className="text-slate-300 group-hover:text-blue-600" />
-                  </button>
-                ))}
-              </div>
-            </section>
           </div>
 
           <div className="space-y-6">
             <TrackingTicket />
-            <div className="bg-indigo-900 text-white p-8 rounded-3xl shadow-xl relative overflow-hidden">
+            <div className="bg-indigo-900 text-white p-8 rounded-3xl shadow-xl">
               <h3 className="text-xl font-bold mb-6">Butuh Bantuan?</h3>
-              <button onClick={() => setIsFormOpen(true)} className="w-full bg-orange-500 hover:bg-orange-600 text-white py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2">
+              <button onClick={() => setIsFormOpen(true)} className="w-full bg-orange-500 hover:bg-orange-600 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2">
                 <Send size={18} /> Buat Tiket Bantuan
               </button>
             </div>
