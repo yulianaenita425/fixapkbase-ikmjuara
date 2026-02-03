@@ -4,11 +4,12 @@ import { supabase } from "@/lib/supabaseClient";
 import Link from "next/link";
 import Image from "next/image";
 
-// Komponen Kartu Statistik
+// Komponen Kartu Statistik dengan Desain Ultra Modern
 function StatCard({ title, count, icon, color, link, delay }: { title: string, count: number | string, icon: string, color: string, link: string, delay: string }) {
   return (
     <Link href={link}>
       <div className={`relative p-7 rounded-[2.5rem] bg-white border border-slate-100 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.05)] hover:shadow-[0_40px_80px_-15px_rgba(79,70,229,0.15)] hover:-translate-y-3 transition-all duration-500 cursor-pointer group overflow-hidden`}>
+        {/* Glow Decor */}
         <div className={`absolute -right-4 -top-4 w-24 h-24 rounded-full blur-3xl opacity-20 group-hover:opacity-40 transition-opacity ${color}`}></div>
         
         <div className="relative z-10 flex justify-between items-start mb-6">
@@ -37,7 +38,8 @@ export default function AdminDashboard() {
     layananAktif: 0,
     pelatihan: 0,
     peserta: 0,
-    deleted: 0
+    deleted: 0,
+    support: 0 // State baru untuk tiket
   })
   const [loading, setLoading] = useState(true)
 
@@ -48,11 +50,13 @@ export default function AdminDashboard() {
   const fetchStats = async () => {
     try {
       setLoading(true)
-      const [ikm, layanan, pelatihan, peserta] = await Promise.all([
+      const [ikm, layanan, pelatihan, peserta, support] = await Promise.all([
         supabase.from("ikm_binaan").select("*", { count: 'exact', head: true }).is('deleted_at', null),
         supabase.from("layanan_ikm_juara").select("*", { count: 'exact', head: true }).is('deleted_at', null),
         supabase.from("kegiatan_pelatihan").select("*", { count: 'exact', head: true }).is('deleted_at', null),
         supabase.from("peserta_pelatihan").select("*", { count: 'exact', head: true }),
+        // Hitung tiket yang masih 'Open'
+        supabase.from("support_tickets").select("*", { count: 'exact', head: true }).eq('status', 'Open'),
       ])
 
       const { count: countDeleted } = await supabase
@@ -66,7 +70,8 @@ export default function AdminDashboard() {
         layananAktif: layanan.count || 0, 
         pelatihan: pelatihan.count || 0,
         peserta: peserta.count || 0,
-        deleted: countDeleted || 0
+        deleted: countDeleted || 0,
+        support: support.count || 0 // Masukkan hasil count tiket
       })
     } catch (error) {
       console.error("Gagal memuat statistik:", error)
@@ -77,6 +82,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="p-6 md:p-10 bg-[#F8FAFC] min-h-screen font-sans overflow-hidden">
+      {/* Background Decorative Blobs */}
       <div className="fixed top-0 right-0 -translate-y-1/2 translate-x-1/4 w-[500px] h-[500px] bg-indigo-50 rounded-full blur-[120px] -z-10 animate-pulse"></div>
       
       <div className="max-w-7xl mx-auto relative z-10">
@@ -105,14 +111,36 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        {/* Quick Navigation Hooks */}
+        <div className="flex flex-wrap gap-3 mb-8">
+          <Link href="/admin/support-tickets">
+            <div className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-bold text-slate-600 hover:border-indigo-500 hover:text-indigo-600 transition-all cursor-pointer shadow-sm group">
+              <span className={`w-2 h-2 rounded-full ${stats.support > 0 ? 'bg-red-500 animate-pulse' : 'bg-slate-300'}`}></span>
+              MANAJEMEN TIKET
+            </div>
+          </Link>
+          {/* Tombol navigasi cepat lainnya bisa ditambah di sini */}
+        </div>
+
         {/* Info Utama - Grid Statistik */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 mb-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 mb-12">
           <StatCard title="IKM Binaan (Aktif)" count={stats.ikm} icon="👥" color="bg-indigo-50" link="/admin/ikm-binaan" delay="0" />
+          
+          {/* KARTU BARU: Tiket Bantuan */}
+          <StatCard 
+            title="Tiket Bantuan (Open)" 
+            count={stats.support} 
+            icon="🎫" 
+            color="bg-red-50" 
+            link="/admin/support-tickets" 
+            delay="50" 
+          />
+
           <StatCard title="Master Layanan" count={stats.dataLayanan} icon="📂" color="bg-violet-50" link="/admin/data-layanan" delay="100" />
-          <StatCard title="Layanan IKM Juara" count={stats.layananAktif} icon="🏆" color="bg-amber-50" link="/admin/layanan" delay="200" />
-          <StatCard title="Pelatihan Industri" count={stats.pelatihan} icon="🎓" color="bg-emerald-50" link="/admin/kegiatan-pelatihan" delay="300" />
-          <StatCard title="Peserta Terinput" count={stats.peserta} icon="📝" color="bg-orange-50" link="/admin/kegiatan-pelatihan" delay="400" />
-          <StatCard title="Recycle Bin" count={stats.deleted} icon="🗑️" color="bg-rose-50" link="/admin/recycle-bin" delay="500" />
+          <StatCard title="Layanan IKM Juara" count={stats.layananAktif} icon="🏆" color="bg-amber-50" link="/admin/layanan" delay="150" />
+          <StatCard title="Pelatihan Industri" count={stats.pelatihan} icon="🎓" color="bg-emerald-50" link="/admin/kegiatan-pelatihan" delay="200" />
+          <StatCard title="Peserta Terinput" count={stats.peserta} icon="📝" color="bg-orange-50" link="/admin/kegiatan-pelatihan" delay="250" />
+          <StatCard title="Recycle Bin" count={stats.deleted} icon="🗑️" color="bg-rose-50" link="/admin/recycle-bin" delay="300" />
         </div>
 
         {/* Hero Banner Penelusuran */}
