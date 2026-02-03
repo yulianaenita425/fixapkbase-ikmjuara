@@ -4,16 +4,15 @@ import { supabase } from "@/lib/supabaseClient";
 import Link from "next/link";
 import Image from "next/image";
 
-// Komponen Kartu Statistik dengan Desain Ultra Modern
+// Komponen Kartu Statistik
 function StatCard({ title, count, icon, color, link, delay }: { title: string, count: number | string, icon: string, color: string, link: string, delay: string }) {
   return (
     <Link href={link}>
       <div className={`relative p-7 rounded-[2.5rem] bg-white border border-slate-100 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.05)] hover:shadow-[0_40px_80px_-15px_rgba(79,70,229,0.15)] hover:-translate-y-3 transition-all duration-500 cursor-pointer group overflow-hidden`}>
-        {/* Glow Decor */}
-        <div className={`absolute -right-4 -top-4 w-24 h-24 rounded-full blur-3xl opacity-20 group-hover:opacity-40 transition-opacity ${color.replace('bg-', 'bg-')}`}></div>
+        <div className={`absolute -right-4 -top-4 w-24 h-24 rounded-full blur-3xl opacity-20 group-hover:opacity-40 transition-opacity ${color}`}></div>
         
         <div className="relative z-10 flex justify-between items-start mb-6">
-          <div className={`w-14 h-14 rounded-2xl ${color} flex items-center justify-center text-3xl shadow-xl shadow-inner group-hover:rotate-12 transition-transform duration-500`}>
+          <div className={`w-14 h-14 rounded-2xl ${color} flex items-center justify-center text-3xl shadow-xl group-hover:rotate-12 transition-transform duration-500`}>
             {icon}
           </div>
           <div className="flex flex-col items-end">
@@ -78,7 +77,6 @@ export default function AdminDashboard() {
 
   return (
     <div className="p-6 md:p-10 bg-[#F8FAFC] min-h-screen font-sans overflow-hidden">
-      {/* Background Decorative Blobs */}
       <div className="fixed top-0 right-0 -translate-y-1/2 translate-x-1/4 w-[500px] h-[500px] bg-indigo-50 rounded-full blur-[120px] -z-10 animate-pulse"></div>
       
       <div className="max-w-7xl mx-auto relative z-10">
@@ -117,15 +115,14 @@ export default function AdminDashboard() {
           <StatCard title="Recycle Bin" count={stats.deleted} icon="🗑️" color="bg-rose-50" link="/admin/recycle-bin" delay="500" />
         </div>
 
-        {/* Hero Banner Penelusuran - Selaras dengan Landing Page */}
+        {/* Hero Banner Penelusuran */}
         <div className="group relative bg-[#1A1A40] rounded-[3rem] p-10 md:p-16 text-white overflow-hidden shadow-[0_50px_100px_-20px_rgba(26,26,64,0.4)] border-b-[12px] border-indigo-600 transition-transform duration-500">
-          {/* Animated Background Decoration */}
           <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full blur-[100px] opacity-20 group-hover:scale-125 transition-transform duration-1000"></div>
           
           <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-10">
             <div className="text-center md:text-left flex-1">
               <div className="inline-block px-4 py-1 rounded-full bg-white/10 border border-white/20 text-indigo-300 text-[10px] font-black uppercase tracking-[3px] mb-6">
-                IKM JUARA Integrasi Konsultasi Mandiri untuk Jaminan Usaha, Akselerasi, dan Produktivitas Industri Anda!
+                IKM JUARA INTEGRASI KONSULTASI MANDIRI
               </div>
               <h2 className="text-3xl md:text-5xl font-black mb-6 uppercase italic leading-none tracking-tighter">
                 Butuh Data <br/>Spesifik <span className="text-yellow-400">IKM?</span>
@@ -140,10 +137,8 @@ export default function AdminDashboard() {
                 </button>
               </Link>
             </div>
-            
-            {/* Visual Icon for Banner */}
             <div className="w-48 h-48 md:w-64 md:h-64 bg-white/5 backdrop-blur-3xl rounded-[3rem] border border-white/10 flex items-center justify-center text-8xl shadow-inner animate-float">
-               🔎
+                🔎
             </div>
           </div>
         </div>
@@ -154,8 +149,12 @@ export default function AdminDashboard() {
             Copyright &copy; 2026 • IKM JUARA (Bidang Perindustrian DISNAKERKUKM KOTA MADIUN)
           </div>
           <div className="flex gap-6 text-[10px] font-black text-indigo-600 uppercase tracking-widest">
-             <span className="cursor-pointer hover:text-indigo-400 transition">Privacy</span>
-             <span className="cursor-pointer hover:text-indigo-400 transition">Support</span>
+            <Link href="/privacy">
+              <span className="cursor-pointer hover:text-indigo-400 transition">Privacy</span>
+            </Link>
+            <Link href="/support">
+              <span className="cursor-pointer hover:text-indigo-400 transition">Support</span>
+            </Link>
           </div>
         </div>
       </div>
