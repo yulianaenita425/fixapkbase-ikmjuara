@@ -87,12 +87,12 @@ export default function AdminDashboard() {
         <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-6">
           <div className="animate-fadeIn">
             <div className="flex items-center gap-3 mb-4">
-               <Image src="/Laura joss.png" alt="Logo" width={40} height={40} className="shadow-lg rounded-xl" />
+               <Image src="/ikmjuarav2.png" alt="Logo" width={40} height={40} className="shadow-lg rounded-xl" />
                <div className="h-8 w-[2px] bg-slate-200"></div>
-               <span className="text-xs font-black text-indigo-600 uppercase tracking-[4px]">Admin Portal v2</span>
+               <span className="text-xs font-black text-indigo-600 uppercase tracking-[4px]">Portal Admin</span>
             </div>
             <h1 className="text-4xl md:text-5xl font-black text-[#1A1A40] italic uppercase tracking-tighter leading-none">
-              DASHBOARD <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 underline decoration-yellow-400 decoration-8 underline-offset-[10px]">CONTROL</span>
+              DASHBOARD <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 underline decoration-yellow-400 decoration-8 underline-offset-[10px]">IKM JUARA</span>
             </h1>
           </div>
           
@@ -125,18 +125,18 @@ export default function AdminDashboard() {
           <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-10">
             <div className="text-center md:text-left flex-1">
               <div className="inline-block px-4 py-1 rounded-full bg-white/10 border border-white/20 text-indigo-300 text-[10px] font-black uppercase tracking-[3px] mb-6">
-                Quick Search Engine
+                IKM JUARA Integrasi Konsultasi Mandiri untuk Jaminan Usaha, Akselerasi, dan Produktivitas Industri Anda!
               </div>
               <h2 className="text-3xl md:text-5xl font-black mb-6 uppercase italic leading-none tracking-tighter">
                 Butuh Data <br/>Spesifik <span className="text-yellow-400">IKM?</span>
               </h2>
               <p className="text-sm md:text-lg text-indigo-100/70 mb-10 max-w-lg font-medium leading-relaxed">
-                Akses modul penelusuran cerdas untuk memetakan potensi IKM berdasarkan sektor, wilayah, dan legalitas secara real-time.
+                Akses penelusuran cerdas dengan NIB, NIK dan Nama Lengkap IKM untuk melihat database IKM secara real-time.
               </p>
               <Link href="/admin/penelusuran">
                 <button className="group relative bg-white text-[#1A1A40] px-10 py-5 rounded-2xl font-black uppercase text-xs hover:bg-yellow-400 transition-all active:scale-95 shadow-2xl flex items-center gap-3">
                   Buka Penelusuran 
-                  <span className="group-hover:translate-x-2 transition-transform">🔎</span>
+                  <span className="group-hover:translate-x-4 transition-transform">🕵️‍♀️</span>
                 </button>
               </Link>
             </div>
@@ -151,7 +151,7 @@ export default function AdminDashboard() {
         {/* Footer */}
         <div className="mt-20 py-10 border-t border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="text-[10px] font-black uppercase tracking-[4px] text-slate-400 text-center md:text-left">
-            IKM Juara Management System &copy; 2026 • Madiun Digital Ecosystem
+            Copyright &copy; 2026 • IKM JUARA (Bidang Perindustrian DISNAKERKUKM KOTA MADIUN)
           </div>
           <div className="flex gap-6 text-[10px] font-black text-indigo-600 uppercase tracking-widest">
              <span className="cursor-pointer hover:text-indigo-400 transition">Privacy</span>
