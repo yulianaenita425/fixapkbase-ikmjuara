@@ -2,7 +2,9 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation" // Tambahkan useRouter
+import { supabase } from '@/lib/supabaseClient' // Import supabase
+import Cookies from 'js-cookie' // Import Cookies
 
 const menuItems = [
   { name: "Dashboard", path: "/admin", icon: "📊" },
@@ -16,14 +18,35 @@ const menuItems = [
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const [isSidebarOpen, setSidebarOpen] = useState(false) // Fitur Toggle Mobile
+  const router = useRouter() // Inisialisasi router
+  const [isSidebarOpen, setSidebarOpen] = useState(false) 
   
   const activeMenu = menuItems.find(item => item.path === pathname) || { name: "Admin Panel", icon: "⚙️" };
+
+  // FUNGSI LOGOUT
+  const handleLogout = async () => {
+    const confirmLogout = confirm("Apakah Anda yakin ingin keluar dari sistem?");
+    if (!confirmLogout) return;
+
+    try {
+      // 1. Sign out dari Supabase
+      await supabase.auth.signOut();
+      
+      // 2. Hapus Cookie agar Middleware memblokir akses
+      Cookies.remove('sb-access-token');
+
+      // 3. Redirect ke halaman login
+      router.push('/login');
+    } catch (error) {
+      console.error("Error saat logout:", error);
+      alert("Gagal keluar sistem, silakan coba lagi.");
+    }
+  };
 
   return (
     <div className="flex min-h-screen bg-[#F8FAFC]">
       
-      {/* 1. TOMBOL HAMBURGER (Hanya muncul di Mobile) */}
+      {/* 1. TOMBOL HAMBURGER (Mobile) */}
       <button 
         onClick={() => setSidebarOpen(!isSidebarOpen)}
         className="lg:hidden fixed top-4 left-4 z-[100] p-3 bg-indigo-600 text-white rounded-xl shadow-lg hover:bg-indigo-700 transition-colors"
@@ -31,7 +54,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {isSidebarOpen ? '✕' : '☰'}
       </button>
 
-      {/* 2. BACKDROP OVERLAY (Menutup menu saat layar gelap diklik) */}
+      {/* 2. BACKDROP OVERLAY */}
       {isSidebarOpen && (
         <div 
           className="fixed inset-0 bg-indigo-950/40 z-[80] lg:hidden backdrop-blur-sm"
@@ -39,7 +62,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         />
       )}
 
-      {/* 3. SIDEBAR (Sekarang Responsif) */}
+      {/* 3. SIDEBAR */}
       <aside className={`
         fixed lg:static inset-y-0 left-0 z-[90]
         w-72 bg-indigo-950 text-white flex flex-col h-full shadow-2xl transition-transform duration-300 ease-in-out
@@ -75,22 +98,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           })}
         </nav>
 
+        {/* TOMBOL LOGOUT YANG SUDAH DIGABUNG */}
         <div className="p-6 border-t border-indigo-900/50">
-          <Link href="/">
-            <button className="w-full bg-rose-500/10 hover:bg-rose-600 text-rose-500 hover:text-white py-4 rounded-2xl font-black text-[10px] uppercase transition-all flex items-center justify-center gap-2">
-              <span>🚪</span> KELUAR SISTEM
-            </button>
-          </Link>
+          <button 
+            onClick={handleLogout}
+            className="w-full bg-rose-500/10 hover:bg-rose-600 text-rose-500 hover:text-white py-4 rounded-2xl font-black text-[10px] uppercase transition-all flex items-center justify-center gap-2 group"
+          >
+            <span className="group-hover:rotate-12 transition-transform">🚪</span> KELUAR SISTEM
+          </button>
         </div>
       </aside>
 
       {/* 4. MAIN CONTENT AREA */}
-      {/* ml-0 di mobile, ml-72 di desktop (karena sidebar fixed/static) */}
       <main className="flex-1 flex flex-col min-w-0">
         {/* TOP NAVBAR */}
         <header className="h-20 bg-white border-b border-slate-200 sticky top-0 z-40 px-6 md:px-10 flex items-center justify-between shadow-sm">
           <div className="flex items-center gap-4 ml-12 lg:ml-0"> 
-            {/* ml-12 memberi ruang agar teks tidak tertutup tombol hamburger di mobile */}
             <span className="text-xl md:text-2xl">{activeMenu.icon}</span>
             <div>
               <h2 className="text-xs md:text-sm font-black text-indigo-950 uppercase tracking-widest truncate max-w-[150px] md:max-w-none">
