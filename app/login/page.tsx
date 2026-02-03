@@ -116,7 +116,7 @@ export default function LoginPage() {
           
           <div className="text-center mb-10">
             <div className="inline-block p-4 bg-white rounded-3xl shadow-[0_0_30px_rgba(255,255,255,0.2)] mb-6 animate-float">
-              <Image src="/Laura joss.png" alt="Logo" width={70} height={70} />
+              <Image src="/ikmjuarav1.png" alt="Logo" width={70} height={70} />
             </div>
             <h1 className="text-4xl font-black text-white italic tracking-tighter leading-none">
             <span className="text-indigo-500">IKM JUARA</span>
