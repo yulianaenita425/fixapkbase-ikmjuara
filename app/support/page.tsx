@@ -116,32 +116,41 @@ const SupportPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [resultTicket, setResultTicket] = useState<string | null>(null);
 
-  // Fungsi pengiriman tiket yang sudah diintegrasikan dengan kolom admin_update
+  /**
+   * Fungsi handleSubmitTicket (VERSI TERBARU)
+   * Menggunakan objek JSON murni (payload) untuk menghindari error Content-Type
+   */
   const handleSubmitTicket = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
     
+    // Mengambil data dari elemen form
     const formData = new FormData(e.currentTarget);
     const ticketNo = `TKT-${Math.floor(10000 + Math.random() * 90000)}`;
 
+    // Menyiapkan data dalam bentuk objek JavaScript murni
+    const payload = {
+      ticket_number: ticketNo,
+      full_name: formData.get('fullName')?.toString() || '',
+      ikm_name: formData.get('ikmName')?.toString() || '',
+      subject: formData.get('subject')?.toString() || '',
+      description: formData.get('description')?.toString() || '',
+      status: 'Open',
+      admin_update: 'Tiket berhasil dibuat. Menunggu respon admin.'
+    };
+
     try {
-      const { error } = await supabase.from('support_tickets').insert([
-        {
-          ticket_number: ticketNo,
-          full_name: formData.get('fullName'),
-          ikm_name: formData.get('ikmName'),
-          subject: formData.get('subject'),
-          description: formData.get('description'),
-          status: 'Open',
-          admin_update: 'Tiket berhasil dibuat. Menunggu respon admin.' // Default message
-        }
-      ]);
+      // Mengirim objek 'payload' ke Supabase
+      const { error } = await supabase
+        .from('support_tickets')
+        .insert([payload]); 
 
       if (error) throw error;
       setResultTicket(ticketNo);
     } catch (err: any) {
-      console.error("Detail Error:", err.message);
-      alert('Gagal mengirim aduan. Pastikan koneksi stabil.');
+      console.error("Detail Error:", err);
+      // Menampilkan pesan error spesifik jika gagal
+      alert(`Gagal mengirim aduan: ${err.message || 'Terjadi kesalahan sistem'}`);
     } finally {
       setIsSubmitting(false);
     }
