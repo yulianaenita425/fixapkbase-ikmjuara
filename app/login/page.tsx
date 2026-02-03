@@ -104,14 +104,14 @@ export default function LoginPage() {
               <Image src="/Laura joss.png" alt="Logo" width={70} height={70} />
             </div>
             <h1 className="text-4xl font-black text-white italic tracking-tighter leading-none">
-              IKM <span className="text-indigo-500">JUARA</span>
+            <span className="text-indigo-500">IKM JUARA</span>
             </h1>
-            <p className="text-slate-500 text-[10px] font-black uppercase tracking-[5px] mt-3">Terminal Access v2.0</p>
+            <p className="text-slate-500 text-[10px] font-black uppercase tracking-[5px] mt-3">Halaman Login admin</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest ml-2">Internal Identity</label>
+              <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest ml-2">username</label>
               <input
                 required type="email"
                 placeholder="admin@madiun.go.id"
@@ -121,7 +121,7 @@ export default function LoginPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest ml-2">Access Key</label>
+              <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest ml-2">Password</label>
               <input
                 required type="password"
                 placeholder="••••••••"
@@ -135,14 +135,14 @@ export default function LoginPage() {
               type="submit"
               className="w-full group relative py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase text-xs tracking-[4px] shadow-2xl hover:bg-indigo-500 transition-all active:scale-95 disabled:opacity-50 overflow-hidden"
             >
-              <span className="relative z-10">{loading ? 'Processing...' : 'INITIALIZE SYSTEM'}</span>
+              <span className="relative z-10">{loading ? 'Processing...' : 'LOGIN'}</span>
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-shimmer" />
             </button>
           </form>
         </div>
         
         <p className="mt-8 text-center text-slate-600 text-[10px] font-bold uppercase tracking-widest">
-          Secure Encrypted Connection • Madiun Industrial Center
+          Copyright © 2026 IKM Juara (Bidang Perindustrian DISNAKERKUKM KOTA MADIUN)
         </p>
       </div>
 
