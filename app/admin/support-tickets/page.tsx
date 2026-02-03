@@ -3,8 +3,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { 
-  Search, Ticket, Clock, CheckCircle2, 
-  ExternalLink, MessageSquare, Filter, RefreshCcw 
+  Ticket, Clock, MessageSquare, RefreshCcw 
 } from "lucide-react";
 
 export default function AdminSupportManagement() {
@@ -76,7 +75,7 @@ export default function AdminSupportManagement() {
               <div key={ticket.id} className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm hover:shadow-md transition-all flex flex-col lg:flex-row gap-6 items-start">
                 
                 {/* Info Utama */}
-                <div className="flex-1 space-y-3">
+                <div className="flex-1 space-y-3 w-full">
                   <div className="flex items-center gap-3">
                     <span className="font-mono font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg text-sm">
                       {ticket.ticket_number}
@@ -90,7 +89,7 @@ export default function AdminSupportManagement() {
                     </span>
                   </div>
                   <h3 className="font-black text-slate-800 text-lg">{ticket.subject}</h3>
-                  <div className="flex items-center gap-4 text-xs text-slate-500 font-medium">
+                  <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 font-medium">
                     <span className="flex items-center gap-1.5"><Clock size={14} /> {new Date(ticket.created_at).toLocaleDateString('id-ID')}</span>
                     <span className="flex items-center gap-1.5"><MessageSquare size={14} /> {ticket.full_name} ({ticket.ikm_name})</span>
                   </div>
@@ -105,11 +104,13 @@ export default function AdminSupportManagement() {
                   <select 
                     disabled={updating === ticket.id}
                     onChange={(e) => {
-                      const msg = e.target.value === 'On Process' ? 'Sedang diverifikasi oleh tim teknis.' : 'Masalah telah diselesaikan.';
-                      updateStatus(ticket.id, e.target.value, msg);
+                      const val = e.target.value;
+                      const msg = val === 'On Process' ? 'Sedang diverifikasi oleh tim teknis.' : 
+                                  val === 'Closed' ? 'Masalah telah diselesaikan.' : 'Menunggu antrian.';
+                      updateStatus(ticket.id, val, msg);
                     }}
                     value={ticket.status}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                   >
                     <option value="Open">Set Open</option>
                     <option value="On Process">Set On Process</option>
@@ -118,7 +119,7 @@ export default function AdminSupportManagement() {
                   
                   <div className="p-3 bg-indigo-900 rounded-xl">
                     <p className="text-[9px] text-indigo-300 font-bold uppercase mb-1">Status Terkini ke User:</p>
-                    <p className="text-[10px] text-white italic">"{ticket.admin_update}"</p>
+                    <p className="text-[10px] text-white italic">"{ticket.admin_update || 'Belum ada update'}"</p>
                   </div>
                 </div>
               </div>
