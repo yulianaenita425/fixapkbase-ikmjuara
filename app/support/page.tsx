@@ -81,9 +81,9 @@ const TrackingTicket = () => {
                   statusData.status === 'Open' ? 'w-0' : statusData.status === 'On Process' ? 'w-1/2' : 'w-full'
                 }`}
               ></div>
-              <StepIcon active={true} done={statusData.status !== 'Open'} label="Open" />
-              <StepIcon active={statusData.status !== 'Open'} done={statusData.status === 'Closed'} label="Process" />
-              <StepIcon active={statusData.status === 'Closed'} done={statusData.status === 'Closed'} label="Done" />
+              <StepIcon active={true} label="Open" done={statusData.status !== 'Open'} />
+              <StepIcon active={statusData.status !== 'Open'} label="Process" done={statusData.status === 'Closed'} />
+              <StepIcon active={statusData.status === 'Closed'} label="Done" done={statusData.status === 'Closed'} />
             </div>
 
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
@@ -110,25 +110,21 @@ const StepIcon = ({ active, done, label }: { active: boolean, done: boolean, lab
   </div>
 );
 
-// --- Halaman Utama & Form Pengaduan ---
+// --- Halaman Utama ---
 const SupportPage = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [resultTicket, setResultTicket] = useState<string | null>(null);
 
-  /**
-   * Fungsi handleSubmitTicket (VERSI TERBARU)
-   * Menggunakan objek JSON murni (payload) untuk menghindari error Content-Type
-   */
   const handleSubmitTicket = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
     
-    // Mengambil data dari elemen form
-    const formData = new FormData(e.currentTarget);
+    const form = e.currentTarget;
+    const formData = new FormData(form);
     const ticketNo = `TKT-${Math.floor(10000 + Math.random() * 90000)}`;
 
-    // Menyiapkan data dalam bentuk objek JavaScript murni
+    // PENTING: Mengirim sebagai objek murni untuk memastikan header application/json otomatis terpasang oleh SDK
     const payload = {
       ticket_number: ticketNo,
       full_name: formData.get('fullName')?.toString() || '',
@@ -140,7 +136,6 @@ const SupportPage = () => {
     };
 
     try {
-      // Mengirim objek 'payload' ke Supabase
       const { error } = await supabase
         .from('support_tickets')
         .insert([payload]); 
@@ -148,9 +143,8 @@ const SupportPage = () => {
       if (error) throw error;
       setResultTicket(ticketNo);
     } catch (err: any) {
-      console.error("Detail Error:", err);
-      // Menampilkan pesan error spesifik jika gagal
-      alert(`Gagal mengirim aduan: ${err.message || 'Terjadi kesalahan sistem'}`);
+      console.error("Supabase Error:", err);
+      alert(`Gagal mengirim: ${err.message || 'Cek koneksi database'}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -158,7 +152,6 @@ const SupportPage = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans relative">
-      
       {isFormOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
@@ -216,7 +209,7 @@ const SupportPage = () => {
         </div>
       )}
 
-      {/* Hero & Content */}
+      {/* Hero */}
       <div className="bg-gradient-to-br from-indigo-900 via-blue-800 to-blue-700 py-24 px-4 text-center text-white">
         <h1 className="text-4xl md:text-6xl font-extrabold mb-4">Kami Siap Mendampingi Anda</h1>
         <p className="text-blue-100 text-lg md:text-xl mb-8">IKM JUARA – Dari Lokal Berkarya, ke Global Berdaya!</p>
