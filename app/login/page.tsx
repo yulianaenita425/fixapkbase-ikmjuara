@@ -3,6 +3,8 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+// 1. IMPORT COOKIES
+import Cookies from 'js-cookie';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -75,14 +77,27 @@ export default function LoginPage() {
     return () => window.removeEventListener('resize', resize);
   }, []);
 
+  // 2. LOGIKA LOGIN DENGAN COOKIES
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+    // Ambil data session saat login
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
     if (error) {
       alert('Akses Ditolak: ' + error.message);
       setLoading(false);
-    } else {
+    } else if (data?.session) {
+      // SIMPAN ACCESS TOKEN KE COOKIE
+      // Nama 'sb-access-token' ini harus sama dengan yang ada di middleware.ts nanti
+      Cookies.set('sb-access-token', data.session.access_token, { 
+        expires: 1, // Token hangus dalam 1 hari
+        path: '/',
+        sameSite: 'lax'
+      });
+
+      // Redirect ke halaman admin
       router.push('/admin');
     }
   };
