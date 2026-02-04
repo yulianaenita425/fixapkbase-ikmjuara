@@ -5,22 +5,23 @@ import Lottie from "lottie-react";
 import { 
   ShieldCheck, TrendingUp, Globe, Award, 
   MessageCircle, ArrowRight, User, Hash, 
-  ShoppingBag, MapPin, Briefcase 
+  ShoppingBag, MapPin, Briefcase, CheckCircle2, Volume2 
 } from 'lucide-react';
 // @ts-ignore
 import { handlePendaftaran } from './actions';
+import { useNotification } from './hooks/useNotification'; // 1. IMPORT HOOK
 
 export default function IKMJuaraFullPage() {
-  // --- 1. DEKLARASI STATE (Wajib di Atas) ---
+  // --- 1. DEKLARASI HOOK & STATE ---
+  const { toast, showNotification } = useNotification(); // 2. INISIALISASI HOOK
   const [showModal, setShowModal] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [animationData, setAnimationData] = useState(null);
   const [layanan, setLayanan] = useState("");
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [showPelatihanList, setShowPelatihanList] = useState(false);
-  const [loadingTamu, setLoadingTamu] = useState(false); // State yang tadi hilang
+  const [loadingTamu, setLoadingTamu] = useState(false);
 
-  // Daftar Pelatihan Aktif 2026
   const daftarPelatihan = [
     "Pelatihan Digital Marketing IKM 2026",
     "Pelatihan Desain Kemasan Inovatif",
@@ -28,15 +29,12 @@ export default function IKMJuaraFullPage() {
     "Bimtek Standarisasi Mutu Produk"
   ];
 
-  // Efek Navbar saat scroll & Fetch Lottie Data
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
     window.addEventListener('scroll', handleScroll);
-
     fetch("https://lottie.host/7604f378-62a2-463f-9e6b-73010b991823/K0S9Vv3u9y.json")
       .then((res) => res.json())
       .then((data) => setAnimationData(data));
-
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
@@ -65,7 +63,23 @@ export default function IKMJuaraFullPage() {
   return (
     <div className="min-h-screen bg-[#F8FAFC] overflow-x-hidden text-[#1A1A40]">
       
-      {/* 1. NAVIGATION */}
+      {/* --- 3. UI NOTIFIKASI TOAST --- */}
+      {toast?.show && (
+        <div className="fixed top-10 left-1/2 -translate-x-1/2 z-[300] animate-scaleIn">
+          <div className="bg-[#1A1A40] text-white px-8 py-4 rounded-2xl shadow-2xl border-2 border-indigo-500 flex items-center gap-4">
+            <div className="bg-green-500 p-1 rounded-full animate-pulse">
+              <CheckCircle2 size={20} className="text-white" />
+            </div>
+            <div className="flex flex-col">
+              <span className="font-black uppercase tracking-widest text-[10px] text-indigo-300">System Notification</span>
+              <span className="font-bold text-sm">{toast.msg}</span>
+            </div>
+            <Volume2 size={16} className="text-slate-500 ml-2 animate-bounce" />
+          </div>
+        </div>
+      )}
+
+      {/* NAVIGATION */}
       <nav className={`fixed w-full z-[100] transition-all duration-500 ${
         scrolled ? "py-3 bg-[#1A1A40]/90 backdrop-blur-xl shadow-2xl" : "py-6 bg-transparent"
       }`}>
@@ -91,7 +105,7 @@ export default function IKMJuaraFullPage() {
         </div>
       </nav>
 
-      {/* 2. HERO SECTION */}
+      {/* HERO SECTION */}
       <section className="relative min-h-screen flex items-center pt-20">
         <div className="absolute top-0 right-0 w-[50%] h-[80%] bg-gradient-to-bl from-indigo-100/50 to-transparent rounded-bl-[200px] -z-10" />
         <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-12 items-center">
@@ -111,12 +125,12 @@ export default function IKMJuaraFullPage() {
                   {animationData && <Lottie animationData={animationData} loop={true} />}
                </div>
                <p className="text-sm font-semibold text-slate-600 italic">
-                 "Mendorong efisiensi dan jaminan usaha industri Kota Madiun."
+                  "Mendorong efisiensi dan jaminan usaha industri Kota Madiun."
                </p>
             </div>
             <div className="flex flex-wrap gap-5">
               <a href="#form-pendaftaran" className="px-10 py-5 bg-[#1A1A40] text-white rounded-2xl font-bold shadow-xl hover:-translate-y-1 transition-all flex items-center gap-3">
-                 MULAI DAFTAR SEKARANG <ArrowRight size={20}/>
+                  MULAI DAFTAR SEKARANG <ArrowRight size={20}/>
               </a>
             </div>
           </div>
@@ -129,7 +143,7 @@ export default function IKMJuaraFullPage() {
         </div>
       </section>
 
-      {/* 3. PROFIL SECTION */}
+      {/* PROFIL SECTION */}
       <section id="profil" className="py-24 px-6 bg-white">
         <div className="max-w-5xl mx-auto">
           <div className="bg-gradient-to-r from-red-600 to-red-800 rounded-3xl p-10 mb-16 shadow-2xl text-center transform hover:scale-[1.01] transition-all">
@@ -172,7 +186,7 @@ export default function IKMJuaraFullPage() {
         </div>
       </section>
 
-      {/* 4. FORM PENDAFTARAN SECTION */}
+      {/* FORM PENDAFTARAN SECTION */}
       <section id="form-pendaftaran" className="py-24 px-6 bg-[#1A1A40]">
         <div className="max-w-4xl mx-auto bg-white rounded-[3rem] shadow-3xl overflow-hidden border-[12px] border-white/10">
           <div className="p-10 bg-slate-50 border-b text-center">
@@ -186,6 +200,7 @@ export default function IKMJuaraFullPage() {
           <form 
             action={async (formData) => {
               await handlePendaftaran(formData);
+              showNotification("PENDAFTARAN BERHASIL DISIMPAN!"); // TRIGGER NOTIF & DING
             }} 
             className="p-10 space-y-8"
           >
@@ -257,7 +272,7 @@ export default function IKMJuaraFullPage() {
         </div>
       </section>
 
-      {/* 5. MODAL BUKU TAMU */}
+      {/* MODAL BUKU TAMU */}
       {showModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-[#1A1A40]/40 backdrop-blur-md">
           <div className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-3xl p-10 relative animate-scaleIn">
@@ -293,7 +308,15 @@ export default function IKMJuaraFullPage() {
                     .insert([dataTamu]);
 
                   if (error) throw error;
-                  window.location.href = '/pencarian';
+                  
+                  // TRIGGER NOTIFIKASI SEBELUM REDIRECT
+                  showNotification("AKSES DATA DIBERIKAN!");
+                  
+                  // Tunggu sebentar agar user sempat lihat notif & dengar bunyi
+                  setTimeout(() => {
+                    window.location.href = '/pencarian';
+                  }, 1500);
+
                 } catch (err) {
                   console.error("Gagal simpan log tamu:", err);
                   window.location.href = '/pencarian';
@@ -330,7 +353,7 @@ export default function IKMJuaraFullPage() {
         </div>
       )}
 
-      {/* 6. FOOTER SECTION */}
+      {/* FOOTER SECTION */}
       <footer className="py-16 text-center bg-white border-t border-slate-100">
         <blockquote className="text-slate-400 italic text-xl font-serif max-w-2xl mx-auto px-6 mb-8">
           "Dengan semangat Juara, setiap IKM di Madiun akan menjadi pelaku industri yang tak hanya tumbuh, tapi juga menginspirasi."
