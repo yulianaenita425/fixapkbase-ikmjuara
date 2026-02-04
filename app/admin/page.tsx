@@ -39,7 +39,7 @@ export default function AdminDashboard() {
     pelatihan: 0,
     peserta: 0,
     deleted: 0,
-    support: 0 // State baru untuk tiket
+    support: 0 
   })
   const [loading, setLoading] = useState(true)
 
@@ -50,15 +50,22 @@ export default function AdminDashboard() {
   const fetchStats = async () => {
     try {
       setLoading(true)
+      
+      // Mengambil data secara paralel untuk efisiensi
       const [ikm, layanan, pelatihan, peserta, support] = await Promise.all([
         supabase.from("ikm_binaan").select("*", { count: 'exact', head: true }).is('deleted_at', null),
         supabase.from("layanan_ikm_juara").select("*", { count: 'exact', head: true }).is('deleted_at', null),
         supabase.from("kegiatan_pelatihan").select("*", { count: 'exact', head: true }).is('deleted_at', null),
         supabase.from("peserta_pelatihan").select("*", { count: 'exact', head: true }),
-        // Hitung tiket yang masih 'Open'
-        supabase.from("support_tickets").select("*", { count: 'exact', head: true }).eq('status', 'Open'),
+        
+        // KOREKSI: Hitung tiket yang 'Open' ATAU 'On Process' DAN belum dihapus (is_deleted: false)
+        supabase.from("support_tickets")
+          .select("*", { count: 'exact', head: true })
+          .in('status', ['Open', 'On Process'])
+          .eq('is_deleted', false)
       ])
 
+      // Hitung total item di Recycle Bin (contoh dari tabel ikm_binaan)
       const { count: countDeleted } = await supabase
         .from("ikm_binaan")
         .select("*", { count: 'exact', head: true })
@@ -71,7 +78,7 @@ export default function AdminDashboard() {
         pelatihan: pelatihan.count || 0,
         peserta: peserta.count || 0,
         deleted: countDeleted || 0,
-        support: support.count || 0 // Masukkan hasil count tiket
+        support: support.count || 0 
       })
     } catch (error) {
       console.error("Gagal memuat statistik:", error)
@@ -119,17 +126,16 @@ export default function AdminDashboard() {
               MANAJEMEN TIKET
             </div>
           </Link>
-          {/* Tombol navigasi cepat lainnya bisa ditambah di sini */}
         </div>
 
         {/* Info Utama - Grid Statistik */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 mb-12">
           <StatCard title="IKM Binaan (Aktif)" count={stats.ikm} icon="👥" color="bg-indigo-50" link="/admin/ikm-binaan" delay="0" />
           
-          {/* KARTU BARU: Tiket Bantuan */}
+          {/* KARTU TIKET: Hanya menghitung Open & On Process */}
           <StatCard 
-            title="Tiket Bantuan (Open)" 
-            count={stats.support} 
+            title="Aduan Perlu Respon" 
+            count={loading ? "..." : stats.support} 
             icon="🎫" 
             color="bg-red-50" 
             link="/admin/support-tickets" 
