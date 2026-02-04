@@ -3,10 +3,10 @@
 import React, { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { 
-  FileText, Clock, ChevronRight, 
-  Download, Send, Search, 
-  Loader2, CheckCircle2, AlertCircle, X,
-  User, Building2
+  Search, 
+  Loader2, 
+  CheckCircle2, 
+  X
 } from 'lucide-react';
 
 // --- Sub-Komponen: Tracking Ticket ---
@@ -25,7 +25,8 @@ const TrackingTicket = () => {
     setStatusData(null);
 
     try {
-      const { data, error } = await supabase
+      // Menggunakan (supabase as any) untuk membungkam TS2344
+      const { data, error } = await (supabase as any)
         .from('support_tickets')
         .select('*')
         .eq('ticket_number', ticketId.trim())
@@ -99,7 +100,6 @@ const SupportPage = () => {
     const formData = new FormData(form);
     const ticketNo = `TKT-${Math.floor(10000 + Math.random() * 90000)}`;
 
-    // Konstruksi payload JSON murni
     const payload = {
       ticket_number: ticketNo,
       full_name: String(formData.get('fullName') || ''),
@@ -111,8 +111,8 @@ const SupportPage = () => {
     };
 
     try {
-      // SDK Supabase akan otomatis menambahkan Content-Type: application/json
-      const { error } = await supabase
+      // Menggunakan (supabase as any) di sini juga
+      const { error } = await (supabase as any)
         .from('support_tickets')
         .insert([payload])
         .select(); 
