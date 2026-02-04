@@ -25,7 +25,7 @@ const TrackingTicket = () => {
     setStatusData(null);
 
     try {
-      // Menggunakan (supabase as any) untuk bypass TypeScript
+      // Menggunakan (supabase as any) untuk bypass TypeScript Strict Mode saat build
       const { data, error } = await (supabase as any)
         .from('support_tickets')
         .select('*')
@@ -100,8 +100,9 @@ const SupportPage = () => {
     const formData = new FormData(form);
     const ticketNo = `TKT-${Math.floor(10000 + Math.random() * 90000)}`;
 
+    // Payload dibersihkan untuk memastikan tipe data String murni sebelum dikirim ke Supabase
     const payload = {
-      ticket_number: ticketNo,
+      ticket_number: String(ticketNo),
       full_name: String(formData.get('fullName') || ''),
       ikm_name: String(formData.get('ikmName') || ''),
       subject: String(formData.get('subject') || ''),
@@ -111,19 +112,23 @@ const SupportPage = () => {
     };
 
     try {
-      // Perbaikan: Menghilangkan titik koma yang memutus rantai fungsi .from().insert().select()
+      // PENTING: Method chaining .from().insert().select() tidak boleh terputus titik koma
       const { error } = await (supabase as any)
         .from('support_tickets')
         .insert([payload])
         .select(); 
 
-      if (error) throw error;
+      if (error) {
+        console.error("Detail Error Supabase:", error);
+        throw error;
+      }
       
       setResultTicket(ticketNo);
       form.reset();
     } catch (err: any) {
       console.error("Critical Error:", err);
-      alert(`Gagal mengirim: ${err.message || 'Terjadi kesalahan internal'}`);
+      // Jika muncul error 'Content-Type', cek RLS di Dashboard Supabase
+      alert(`Gagal mengirim: ${err.message || 'Cek koneksi atau RLS Database'}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -131,6 +136,7 @@ const SupportPage = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans relative">
+      {/* Modal Form */}
       {isFormOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
@@ -163,11 +169,13 @@ const SupportPage = () => {
         </div>
       )}
 
+      {/* Header Section */}
       <div className="bg-indigo-900 py-20 text-center text-white">
         <h1 className="text-4xl font-extrabold mb-4">Pusat Bantuan IKM</h1>
-        <button onClick={() => setIsFormOpen(true)} className="bg-orange-500 px-8 py-3 rounded-full font-bold">Buat Tiket Baru</button>
+        <button onClick={() => setIsFormOpen(true)} className="bg-orange-500 hover:bg-orange-600 transition-colors px-8 py-3 rounded-full font-bold shadow-lg">Buat Tiket Baru</button>
       </div>
 
+      {/* Main Section */}
       <main className="max-w-4xl mx-auto px-4 py-12">
         <TrackingTicket />
       </main>
