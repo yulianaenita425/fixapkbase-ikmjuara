@@ -6,10 +6,11 @@ import {
   FileText, Clock, ChevronRight, 
   Download, Send, Search, 
   Loader2, CheckCircle2, AlertCircle, X,
-  User, Building2, LayoutDashboard, Settings2, MessageSquare
+  User, Building2, LayoutDashboard, Settings2, MessageSquare,
+  Phone // Icon baru ditambahkan
 } from 'lucide-react';
 
-// --- Sub-Komponen: Tracking Ticket (Sama seperti sebelumnya) ---
+// --- Sub-Komponen: Tracking Ticket ---
 const TrackingTicket = () => {
   const [ticketId, setTicketId] = useState('');
   const [loading, setLoading] = useState(false);
@@ -81,7 +82,7 @@ const TrackingTicket = () => {
   );
 };
 
-// --- Komponen Baru: Admin Dashboard View ---
+// --- Komponen: Admin Dashboard View ---
 const AdminDashboard = () => {
   const [tickets, setTickets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -147,16 +148,30 @@ const AdminDashboard = () => {
                   }`}>{ticket.status}</span>
                 </div>
                 <h4 className="font-bold text-slate-800">{ticket.subject}</h4>
-                <p className="text-xs text-slate-500 flex items-center gap-2">
-                  <User size={12} /> {ticket.full_name} • <Building2 size={12} /> {ticket.ikm_name}
+                <p className="text-xs text-slate-500 flex flex-wrap items-center gap-x-4 gap-y-1">
+                    <span className="flex items-center gap-1"><User size={12} /> {ticket.full_name}</span>
+                    <span className="flex items-center gap-1"><Building2 size={12} /> {ticket.ikm_name}</span>
+                    <span className="flex items-center gap-1 text-green-600 font-medium"><Phone size={12} /> {ticket.phone_number}</span>
                 </p>
               </div>
-              <button 
-                onClick={() => setSelectedTicket(ticket)}
-                className="bg-slate-100 hover:bg-indigo-600 hover:text-white px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2"
-              >
-                <MessageSquare size={14} /> Kelola Tiket
-              </button>
+              
+              <div className="flex flex-wrap gap-2">
+                <a 
+                    href={`https://wa.me/${ticket.phone_number?.replace(/[^0-9]/g, '').replace(/^0/, '62')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2"
+                >
+                    <Send size={14} /> Hubungi WA
+                </a>
+
+                <button 
+                    onClick={() => setSelectedTicket(ticket)}
+                    className="bg-slate-100 hover:bg-indigo-600 hover:text-white px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2"
+                >
+                    <MessageSquare size={14} /> Kelola Tiket
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -214,6 +229,7 @@ const SupportPage = () => {
     const payload = {
       ticket_number: ticketNo,
       full_name: formData.get('fullName')?.toString() || '',
+      phone_number: formData.get('phoneNumber')?.toString() || '', // Data WA User
       ikm_name: formData.get('ikmName')?.toString() || '',
       subject: formData.get('subject')?.toString() || '',
       description: formData.get('description')?.toString() || '',
@@ -241,7 +257,7 @@ const SupportPage = () => {
         <button onClick={() => setIsAdminMode(true)} className={`px-6 py-2 rounded-xl text-xs font-bold transition-all ${isAdminMode ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-100'}`}>Tampilan Admin</button>
       </div>
 
-      {/* Hero Section (Hanya tampil di User Mode) */}
+      {/* Hero Section */}
       {!isAdminMode && (
         <div className="bg-gradient-to-br from-indigo-900 via-blue-800 to-blue-700 py-24 px-4 text-center text-white">
           <h1 className="text-4xl md:text-5xl font-extrabold mb-4">Pusat Bantuan IKM</h1>
@@ -279,7 +295,7 @@ const SupportPage = () => {
         )}
       </main>
 
-      {/* Form Modal (Sama seperti sebelumnya) */}
+      {/* Form Modal */}
       {isFormOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
            <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95">
@@ -291,20 +307,30 @@ const SupportPage = () => {
                {!resultTicket ? (
                  <form onSubmit={handleSubmitTicket} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
-                      <input required name="fullName" placeholder="Nama Lengkap" className="w-full p-3 bg-slate-50 border rounded-xl text-sm" />
-                      <input required name="ikmName" placeholder="Nama IKM" className="w-full p-3 bg-slate-50 border rounded-xl text-sm" />
+                      <input required name="fullName" placeholder="Nama Lengkap" className="w-full p-3 bg-slate-50 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                      <input required name="ikmName" placeholder="Nama IKM" className="w-full p-3 bg-slate-50 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
                     </div>
-                    <input required name="subject" placeholder="Subjek" className="w-full p-3 bg-slate-50 border rounded-xl text-sm" />
-                    <textarea required name="description" rows={4} placeholder="Detail masalah..." className="w-full p-3 bg-slate-50 border rounded-xl text-sm" />
-                    <button disabled={isSubmitting} className="w-full bg-orange-500 text-white py-3 rounded-xl font-bold transition-all">
-                      {isSubmitting ? "Mengirim..." : "Kirim Sekarang"}
+                    {/* INPUT WA BARU */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 ml-1">NOMOR WHATSAPP</label>
+                      <input required name="phoneNumber" type="tel" placeholder="08123456789" className="w-full p-3 bg-slate-50 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                    <input required name="subject" placeholder="Subjek Masalah" className="w-full p-3 bg-slate-50 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                    <textarea required name="description" rows={4} placeholder="Jelaskan detail kendala Anda..." className="w-full p-3 bg-slate-50 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                    <button disabled={isSubmitting} className="w-full bg-orange-500 hover:bg-orange-600 text-white py-4 rounded-xl font-bold transition-all shadow-lg shadow-orange-500/30">
+                      {isSubmitting ? <Loader2 className="animate-spin mx-auto" size={20}/> : "Kirim Sekarang"}
                     </button>
                  </form>
                ) : (
-                 <div className="text-center py-10">
-                   <CheckCircle2 size={50} className="text-green-500 mx-auto mb-4" />
-                   <h3 className="font-bold text-lg">Tiket Terkirim!</h3>
-                   <p className="text-indigo-600 font-mono font-bold mt-2">{resultTicket}</p>
+                 <div className="text-center py-10 animate-in zoom-in-90">
+                   <CheckCircle2 size={60} className="text-green-500 mx-auto mb-4" />
+                   <h3 className="font-bold text-xl text-slate-800">Tiket Terkirim!</h3>
+                   <p className="text-slate-500 text-sm mb-6 px-10">Gunakan nomor ini untuk memantau status aduan Anda.</p>
+                   <div className="bg-blue-50 p-4 rounded-2xl inline-block mb-6 border border-blue-100">
+                      <p className="text-blue-600 font-mono text-2xl font-black">{resultTicket}</p>
+                   </div>
+                   <br/>
+                   <button onClick={() => {setIsFormOpen(false); setResultTicket(null);}} className="text-sm font-bold text-slate-400 hover:text-blue-600 transition-colors">Tutup Jendela</button>
                  </div>
                )}
              </div>
