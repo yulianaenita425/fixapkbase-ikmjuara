@@ -3,8 +3,7 @@
 import { useState } from "react"
 import { supabase } from "@/lib/supabaseClient"
 import * as XLSX from "xlsx"
-import jsPDF from "jspdf"
-import autoTable from "jspdf-autotable"
+import Link from "next/link"
 
 function DataDetail({ label, value, color = "text-slate-700" }: { label: string, value: string, color?: string }) {
   return (
@@ -107,9 +106,19 @@ export default function PenelusuranIKM() {
     <div className="flex flex-col min-h-screen bg-[#F1F5F9] font-sans text-slate-900">
       <main className="flex-grow p-4 md:p-8">
         <div className="max-w-6xl mx-auto bg-indigo-950 p-8 md:p-12 rounded-[40px] shadow-2xl mb-8 border-b-[10px] border-indigo-600">
-          <h1 className="text-3xl font-black text-white italic uppercase tracking-tighter mb-6 flex items-center gap-3">
-            <span className="text-4xl">🔎</span> PENELUSURAN DATA IKM
-          </h1>
+          
+          {/* BAGIAN HEADER DENGAN TOMBOL KEMBALI */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+            <h1 className="text-3xl font-black text-white italic uppercase tracking-tighter flex items-center gap-3">
+              <span className="text-4xl">🔎</span> PENELUSURAN DATA IKM
+            </h1>
+            
+            {/* TOMBOL BERANDA */}
+            <Link href="/" className="bg-white/10 hover:bg-white/20 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all border border-white/20 flex items-center gap-2 w-fit">
+              🏠 Beranda Utama
+            </Link>
+          </div>
+
           <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4">
             <input 
               value={searchQuery}
@@ -220,7 +229,6 @@ export default function PenelusuranIKM() {
         )}
       </main>
 
-      {/* FOOTER PENGGABUNGAN */}
       <footer className="py-10 text-center border-t border-slate-100 bg-slate-50/50">
         <div className="flex justify-center gap-6 text-xs font-black uppercase tracking-[0.2em] text-slate-400">
           <a href="/privacy" className="hover:text-indigo-600 transition-colors">Privacy</a>
