@@ -25,7 +25,8 @@ const TrackingTicket = () => {
     setStatusData(null);
 
     try {
-      // Menggunakan (supabase as any) untuk bypass TypeScript Strict Mode saat build
+      // Untuk pencarian (SELECT), kita tetap bisa menggunakan SDK 
+      // karena biasanya tidak bermasalah dengan header POST
       const { data, error } = await (supabase as any)
         .from('support_tickets')
         .select('*')
@@ -95,12 +96,11 @@ const SupportPage = () => {
   const handleSubmitTicket = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
+
     const form = e.currentTarget;
     const formData = new FormData(form);
     const ticketNo = `TKT-${Math.floor(10000 + Math.random() * 90000)}`;
 
-    // Payload dibersihkan untuk memastikan tipe data String murni sebelum dikirim ke Supabase
     const payload = {
       ticket_number: String(ticketNo),
       full_name: String(formData.get('fullName') || ''),
@@ -112,23 +112,31 @@ const SupportPage = () => {
     };
 
     try {
-      // PENTING: Method chaining .from().insert().select() tidak boleh terputus titik koma
-      const { error } = await (supabase as any)
-        .from('support_tickets')
-        .insert([payload])
-        .select(); 
+      // --- SOLUSI AMPUH: MENGGUNAKAN FETCH MANUAL UNTUK INSERT ---
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-      if (error) {
-        console.error("Detail Error Supabase:", error);
-        throw error;
+      const response = await fetch(`${supabaseUrl}/rest/v1/support_tickets`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseKey!,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Gagal mengirim ke database');
       }
-      
+
       setResultTicket(ticketNo);
       form.reset();
     } catch (err: any) {
-      console.error("Critical Error:", err);
-      // Jika muncul error 'Content-Type', cek RLS di Dashboard Supabase
-      alert(`Gagal mengirim: ${err.message || 'Cek koneksi atau RLS Database'}`);
+      console.error("Final Debug Error:", err);
+      alert(`Gagal: ${err.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -142,26 +150,45 @@ const SupportPage = () => {
           <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="bg-indigo-900 p-6 text-white flex justify-between items-center">
               <h2 className="text-xl font-bold">Buat Tiket Bantuan</h2>
-              <button onClick={() => {setIsFormOpen(false); setResultTicket(null);}} className="p-2 hover:bg-white/10 rounded-full transition-colors"><X size={20} /></button>
+              <button onClick={() => {setIsFormOpen(false); setResultTicket(null);}} className="p-2 rounded-full hover:bg-white/10 transition-colors"><X size={20} /></button>
             </div>
             <div className="p-8">
               {!resultTicket ? (
                 <form onSubmit={handleSubmitTicket} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
-                    <input required name="fullName" type="text" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm" placeholder="Nama Lengkap" />
-                    <input required name="ikmName" type="text" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm" placeholder="Nama IKM" />
+                    <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-500 ml-1">NAMA LENGKAP</label>
+                        <input required name="fullName" type="text" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Budi Santoso" />
+                    </div>
+                    <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-500 ml-1">NAMA IKM</label>
+                        <input required name="ikmName" type="text" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="IKM Maju Jaya" />
+                    </div>
                   </div>
-                  <input required name="subject" type="text" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm" placeholder="Subjek" />
-                  <textarea required name="description" rows={4} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm" placeholder="Detail Masalah"></textarea>
-                  <button disabled={isSubmitting} type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 ml-1">SUBJEK</label>
+                    <input required name="subject" type="text" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Masalah Login / Akun" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 ml-1">DETAIL MASALAH</label>
+                    <textarea required name="description" rows={4} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Jelaskan detail kendala Anda..."></textarea>
+                  </div>
+                  <button disabled={isSubmitting} type="submit" className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-slate-300 text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-orange-500/20">
                     {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : "Kirim Aduan"}
                   </button>
                 </form>
               ) : (
-                <div className="py-10 text-center">
-                  <CheckCircle2 size={40} className="text-green-500 mx-auto mb-4" />
-                  <h3 className="text-xl font-bold">Terkirim!</h3>
-                  <p className="text-sm">Nomor Tiket: <span className="font-mono font-bold text-indigo-600">{resultTicket}</span></p>
+                <div className="py-10 text-center animate-in zoom-in-90 duration-300">
+                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <CheckCircle2 size={32} className="text-green-600" />
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-900">Tiket Berhasil Dibuat!</h3>
+                  <p className="text-sm text-slate-500 mb-6 px-4">Simpan nomor tiket Anda untuk memantau status bantuan.</p>
+                  <div className="bg-indigo-50 p-4 rounded-2xl mb-6">
+                    <p className="text-[10px] font-bold text-indigo-400 mb-1 uppercase tracking-wider">Nomor Tiket</p>
+                    <p className="text-2xl font-mono font-black text-indigo-600">{resultTicket}</p>
+                  </div>
+                  <button onClick={() => {setResultTicket(null); setIsFormOpen(false);}} className="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors">Tutup Jendela</button>
                 </div>
               )}
             </div>
@@ -170,14 +197,39 @@ const SupportPage = () => {
       )}
 
       {/* Header Section */}
-      <div className="bg-indigo-900 py-20 text-center text-white">
-        <h1 className="text-4xl font-extrabold mb-4">Pusat Bantuan IKM</h1>
-        <button onClick={() => setIsFormOpen(true)} className="bg-orange-500 hover:bg-orange-600 transition-colors px-8 py-3 rounded-full font-bold shadow-lg">Buat Tiket Baru</button>
+      <div className="bg-indigo-900 py-24 text-center text-white relative overflow-hidden">
+        <div className="absolute inset-0 opacity-10 pointer-events-none">
+            <div className="absolute top-0 left-0 w-64 h-64 bg-white rounded-full -translate-x-1/2 -translate-y-1/2 blur-3xl"></div>
+            <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-500 rounded-full translate-x-1/3 translate-y-1/3 blur-3xl"></div>
+        </div>
+        <div className="relative z-10">
+            <h1 className="text-4xl md:text-5xl font-black mb-6 tracking-tight">Pusat Bantuan IKM</h1>
+            <p className="text-indigo-100 mb-10 max-w-lg mx-auto text-sm md:text-base px-6">Punya kendala dengan sistem? Tim admin kami siap membantu Anda menyelesaikan masalah secepat mungkin.</p>
+            <button onClick={() => setIsFormOpen(true)} className="bg-orange-500 hover:bg-orange-600 transition-all px-10 py-4 rounded-full font-bold shadow-xl shadow-orange-900/40 hover:scale-105 active:scale-95">Buat Tiket Baru</button>
+        </div>
       </div>
 
       {/* Main Section */}
-      <main className="max-w-4xl mx-auto px-4 py-12">
+      <main className="max-w-4xl mx-auto px-4 py-16 -mt-10 relative z-20">
         <TrackingTicket />
+        
+        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+            <div className="p-6">
+                <div className="w-12 h-12 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center mx-auto mb-4 text-indigo-600 font-bold text-lg">1</div>
+                <p className="text-sm font-bold">Isi Formulir</p>
+                <p className="text-[11px] text-slate-500 mt-1">Lengkapi data diri dan detail kendala Anda.</p>
+            </div>
+            <div className="p-6">
+                <div className="w-12 h-12 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center mx-auto mb-4 text-indigo-600 font-bold text-lg">2</div>
+                <p className="text-sm font-bold">Terima Tiket</p>
+                <p className="text-[11px] text-slate-500 mt-1">Gunakan nomor tiket untuk pengecekan berkala.</p>
+            </div>
+            <div className="p-6">
+                <div className="w-12 h-12 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center mx-auto mb-4 text-indigo-600 font-bold text-lg">3</div>
+                <p className="text-sm font-bold">Solusi Admin</p>
+                <p className="text-[11px] text-slate-500 mt-1">Admin akan memberikan update status di tiket Anda.</p>
+            </div>
+        </div>
       </main>
     </div>
   );
