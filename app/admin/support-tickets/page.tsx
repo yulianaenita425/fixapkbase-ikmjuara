@@ -7,7 +7,7 @@ import {
   Download, Send, Search, 
   Loader2, CheckCircle2, AlertCircle, X,
   User, Building2, LayoutDashboard, Settings2, MessageSquare,
-  Phone // Icon baru ditambahkan
+  Phone, Trash2, RotateCcw, Trash // Icon tambahan
 } from 'lucide-react';
 
 // --- Sub-Komponen: Tracking Ticket ---
@@ -88,19 +88,43 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
   const [updating, setUpdating] = useState(false);
+  const [showRecycleBin, setShowRecycleBin] = useState(false);
 
   useEffect(() => {
     fetchTickets();
-  }, []);
+  }, [showRecycleBin]);
 
   const fetchTickets = async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('support_tickets')
       .select('*')
+      .eq('is_deleted', showRecycleBin) // Filter berdasarkan status hapus
       .order('created_at', { ascending: false });
     if (!error) setTickets(data);
     setLoading(false);
+  };
+
+  const handleSoftDelete = async (id: string, restore = false) => {
+    if (!restore && !confirm("Pindahkan tiket ini ke Recycle Bin?")) return;
+    
+    const { error } = await supabase
+      .from('support_tickets')
+      .update({ is_deleted: !restore })
+      .eq('id', id);
+
+    if (!error) fetchTickets();
+  };
+
+  const handlePermanentDelete = async (id: string) => {
+    if (!confirm("Hapus tiket ini secara permanen? Tindakan ini tidak bisa dibatalkan.")) return;
+    
+    const { error } = await supabase
+      .from('support_tickets')
+      .delete()
+      .eq('id', id);
+
+    if (!error) fetchTickets();
   };
 
   const handleUpdateStatus = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -127,17 +151,34 @@ const AdminDashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-          <LayoutDashboard className="text-indigo-600" /> Kelola Aduan ({tickets.length})
+          <LayoutDashboard className="text-indigo-600" /> 
+          {showRecycleBin ? "Recycle Bin" : "Kelola Aduan"} ({tickets.length})
         </h2>
-        <button onClick={fetchTickets} className="p-2 hover:bg-slate-200 rounded-lg transition-colors"><Settings2 size={20} /></button>
+        <div className="flex gap-2">
+            <button 
+                onClick={() => setShowRecycleBin(!showRecycleBin)}
+                className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
+                    showRecycleBin ? 'bg-orange-100 text-orange-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+            >
+                {showRecycleBin ? <LayoutDashboard size={14}/> : <Trash2 size={14}/>}
+                {showRecycleBin ? "Kembali ke Dashboard" : "Buka Recycle Bin"}
+            </button>
+            <button onClick={fetchTickets} className="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors text-slate-600"><Settings2 size={20} /></button>
+        </div>
       </div>
 
       {loading ? (
         <div className="flex justify-center py-20"><Loader2 className="animate-spin text-blue-600" size={40} /></div>
       ) : (
         <div className="grid gap-4">
+          {tickets.length === 0 && (
+            <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-300">
+                <p className="text-slate-400 font-medium">Tidak ada tiket {showRecycleBin ? "di tempat sampah" : "aktif"}.</p>
+            </div>
+          )}
           {tickets.map((ticket) => (
             <div key={ticket.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-blue-300 transition-all">
               <div className="space-y-1">
@@ -156,28 +197,52 @@ const AdminDashboard = () => {
               </div>
               
               <div className="flex flex-wrap gap-2">
-                <a 
-                    href={`https://wa.me/${ticket.phone_number?.replace(/[^0-9]/g, '').replace(/^0/, '62')}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2"
-                >
-                    <Send size={14} /> Hubungi WA
-                </a>
-
-                <button 
-                    onClick={() => setSelectedTicket(ticket)}
-                    className="bg-slate-100 hover:bg-indigo-600 hover:text-white px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2"
-                >
-                    <MessageSquare size={14} /> Kelola Tiket
-                </button>
+                {!showRecycleBin ? (
+                    <>
+                        <a 
+                            href={`https://wa.me/${ticket.phone_number?.replace(/[^0-9]/g, '').replace(/^0/, '62')}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2"
+                        >
+                            <Send size={14} /> Hubungi WA
+                        </a>
+                        <button 
+                            onClick={() => setSelectedTicket(ticket)}
+                            className="bg-slate-100 hover:bg-indigo-600 hover:text-white px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2"
+                        >
+                            <MessageSquare size={14} /> Kelola
+                        </button>
+                        <button 
+                            onClick={() => handleSoftDelete(ticket.id)}
+                            className="bg-slate-100 hover:bg-red-500 hover:text-white p-2 rounded-xl transition-all text-red-500"
+                        >
+                            <Trash2 size={16} />
+                        </button>
+                    </>
+                ) : (
+                    <>
+                        <button 
+                            onClick={() => handleSoftDelete(ticket.id, true)}
+                            className="bg-green-100 text-green-600 hover:bg-green-600 hover:text-white px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2"
+                        >
+                            <RotateCcw size={14} /> Pulihkan
+                        </button>
+                        <button 
+                            onClick={() => handlePermanentDelete(ticket.id)}
+                            className="bg-red-100 text-red-600 hover:bg-red-600 hover:text-white px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2"
+                        >
+                            <Trash size={14} /> Hapus Permanen
+                        </button>
+                    </>
+                )}
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Modal Edit Tiket */}
+      {/* Modal Edit Tiket (Hanya Muncul di Dashboard Aktif) */}
       {selectedTicket && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95">
@@ -229,12 +294,13 @@ const SupportPage = () => {
     const payload = {
       ticket_number: ticketNo,
       full_name: formData.get('fullName')?.toString() || '',
-      phone_number: formData.get('phoneNumber')?.toString() || '', // Data WA User
+      phone_number: formData.get('phoneNumber')?.toString() || '',
       ikm_name: formData.get('ikmName')?.toString() || '',
       subject: formData.get('subject')?.toString() || '',
       description: formData.get('description')?.toString() || '',
       status: 'Open',
-      admin_update: 'Tiket berhasil dibuat. Menunggu respon admin.'
+      admin_update: 'Tiket berhasil dibuat. Menunggu respon admin.',
+      is_deleted: false // Pastikan defaultnya false
     };
 
     try {
@@ -250,14 +316,11 @@ const SupportPage = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans relative">
-      
-      {/* Tab Switcher */}
       <div className="fixed top-4 left-1/2 -translate-x-1/2 z-40 bg-white/80 backdrop-blur-md p-1.5 rounded-2xl shadow-lg border border-white/20 flex gap-1">
         <button onClick={() => setIsAdminMode(false)} className={`px-6 py-2 rounded-xl text-xs font-bold transition-all ${!isAdminMode ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-100'}`}>Tampilan User</button>
         <button onClick={() => setIsAdminMode(true)} className={`px-6 py-2 rounded-xl text-xs font-bold transition-all ${isAdminMode ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-100'}`}>Tampilan Admin</button>
       </div>
 
-      {/* Hero Section */}
       {!isAdminMode && (
         <div className="bg-gradient-to-br from-indigo-900 via-blue-800 to-blue-700 py-24 px-4 text-center text-white">
           <h1 className="text-4xl md:text-5xl font-extrabold mb-4">Pusat Bantuan IKM</h1>
@@ -266,9 +329,7 @@ const SupportPage = () => {
       )}
 
       <main className="max-w-6xl mx-auto px-4 py-20">
-        {isAdminMode ? (
-          <AdminDashboard />
-        ) : (
+        {isAdminMode ? <AdminDashboard /> : (
           <div className="grid lg:grid-cols-3 gap-10">
             <div className="lg:col-span-2 space-y-8">
                <h2 className="text-2xl font-bold flex items-center gap-3"><FileText className="text-blue-600" /> Layanan Bantuan</h2>
@@ -295,7 +356,6 @@ const SupportPage = () => {
         )}
       </main>
 
-      {/* Form Modal */}
       {isFormOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
            <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95">
@@ -310,9 +370,8 @@ const SupportPage = () => {
                       <input required name="fullName" placeholder="Nama Lengkap" className="w-full p-3 bg-slate-50 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
                       <input required name="ikmName" placeholder="Nama IKM" className="w-full p-3 bg-slate-50 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
                     </div>
-                    {/* INPUT WA BARU */}
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 ml-1">NOMOR WHATSAPP</label>
+                      <label className="text-[10px] font-bold text-slate-400 ml-1 uppercase">Nomor WhatsApp</label>
                       <input required name="phoneNumber" type="tel" placeholder="08123456789" className="w-full p-3 bg-slate-50 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
                     </div>
                     <input required name="subject" placeholder="Subjek Masalah" className="w-full p-3 bg-slate-50 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
@@ -325,8 +384,7 @@ const SupportPage = () => {
                  <div className="text-center py-10 animate-in zoom-in-90">
                    <CheckCircle2 size={60} className="text-green-500 mx-auto mb-4" />
                    <h3 className="font-bold text-xl text-slate-800">Tiket Terkirim!</h3>
-                   <p className="text-slate-500 text-sm mb-6 px-10">Gunakan nomor ini untuk memantau status aduan Anda.</p>
-                   <div className="bg-blue-50 p-4 rounded-2xl inline-block mb-6 border border-blue-100">
+                   <div className="bg-blue-50 p-4 rounded-2xl inline-block my-6 border border-blue-100">
                       <p className="text-blue-600 font-mono text-2xl font-black">{resultTicket}</p>
                    </div>
                    <br/>
