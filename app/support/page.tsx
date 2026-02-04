@@ -26,11 +26,11 @@ const TrackingTicket = () => {
 
     try {
       // Menggunakan (supabase as any) untuk membungkam TS2344
-      const { data, error } = await (supabase as any)
-        .from('support_tickets')
-        .select('*')
-        .eq('ticket_number', ticketId.trim())
-        .single();
+const { data, error } = await (supabase as any)
+  .from('support_tickets')
+  .select('*')
+  .eq('ticket_number', ticketId.trim())
+  .single();
 
       if (error) throw new Error('Tiket tidak ditemukan.');
       setStatusData(data);
@@ -111,10 +111,10 @@ const SupportPage = () => {
     };
 
     try {
-      // Menggunakan (supabase as any) di sini juga
-      const { error } = await (supabase as any)
-        .from('support_tickets')
-        .insert([payload])
+ // Gunakan (supabase as any) untuk melewati validasi skema saat build
+const { error } = await (supabase as any)
+  .from('support_tickets')
+  .insert([payload]);
         .select(); 
 
       if (error) throw error;
