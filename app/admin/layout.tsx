@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { supabase } from '../../lib/supabaseClient'
 import Cookies from 'js-cookie'
 
+// 1. UPDATE MENU ITEMS
 const menuItems = [
   { name: "Dashboard", path: "/admin", icon: "📊" },
   { name: "Pengajuan Binaan", path: "/admin/pengajuanbinaan", icon: "📝" },
@@ -16,6 +17,10 @@ const menuItems = [
   { name: "Penelusuran", path: "/admin/penelusuran", icon: "🔎" },
   { name: "Inputan Rencana Pelatihan", path: "/admin/rencana-pelatihan", icon: (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c1.097 0 2.148.155 3.127.442m9.75-15.958a8.967 8.967 0 01-6 2.292m0 14.25a8.967 8.967 0 01-6-2.292m6 2.292c1.097 0 2.148.155 3.127.442" /></svg>) },
   { name: "Recycle Bin", path: "/admin/recycle-bin", icon: "🗑️" },
+  
+  // --- MENU BARU ---
+  { name: "Log Aktivitas", path: "/admin/logs", icon: "🕒" },
+  { name: "Pusat Bantuan", path: "/admin/support-tickets", icon: "🎧" },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -38,7 +43,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
     fetchPendingCount();
 
-    // Perbaikan Error TS: Menggunakan any pada channel untuk menghindari strict overload check
     const subscription = supabase
       .channel('pending-badge-realtime')
       .on(
@@ -55,6 +59,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     };
   }, []);
 
+  // Menentukan menu aktif untuk header
   const activeMenu = menuItems.find(item => item.path === pathname) || { name: "Admin Panel", icon: "⚙️" };
 
   const handleLogout = async () => {
@@ -103,7 +108,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <p className="text-[10px] font-bold text-indigo-300 uppercase tracking-[3px] mt-1 italic">Control Center</p>
         </div>
 
-        <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
+        {/* Navigasi Menu */}
+        <nav className="flex-1 px-4 space-y-2 overflow-y-auto custom-scrollbar">
           {menuItems.map((item) => {
             const isActive = pathname === item.path
             const isPengajuan = item.name === "Pengajuan Binaan"
@@ -125,7 +131,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     ) : item.icon}
                   </span>
                   
-                  <span className="text-xs uppercase tracking-widest">{item.name}</span>
+                  <span className="text-[11px] uppercase tracking-widest leading-none">{item.name}</span>
 
                   {isPengajuan && pendingCount > 0 && (
                     <span className="ml-auto bg-rose-500 text-white text-[10px] font-black px-2 py-1 rounded-lg shadow-lg animate-bounce">
