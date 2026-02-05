@@ -8,8 +8,9 @@ interface Pelatihan {
   id: string;
   nama: string;
   jadwal: string;
-  kuota: number; // Kuota Awal/Maksimal
+  kuota: number;
   deskripsi: string;
+  is_published: boolean; // Kolom Baru
   created_at?: string;
 }
 
@@ -57,7 +58,6 @@ export default function AdminPelatihanPage() {
   }, []);
 
   // --- 3. Logika Statistik & Filter ---
-  // Menghitung statistik pendaftar per pelatihan
   const statsPerPelatihan = useMemo(() => {
     const stats: Record<string, { total: number; diterima: number; ditolak: number; pending: number }> = {};
     
@@ -93,12 +93,27 @@ export default function AdminPelatihanPage() {
       const { error } = await supabase.from('kegiatan_2026').update(dataPayload).eq('id', editId);
       if (!error) { alert("Update Berhasil!"); setEditId(null); }
     } else {
-      const { error } = await supabase.from('kegiatan_2026').insert([dataPayload]);
+      const { error } = await supabase.from('kegiatan_2026').insert([{ ...dataPayload, is_published: true }]);
       if (!error) alert("Kegiatan Ditambahkan!");
     }
     setFormData({ nama: '', jadwal: '', kuota: '', deskripsi: '' });
     fetchData();
     setLoading(false);
+  };
+
+  const handleTogglePublikasi = async (id: string, currentStatus: boolean) => {
+    const actionText = currentStatus ? "Akhiri publikasi?" : "Buka kembali publikasi?";
+    if (confirm(`${actionText} (Hal ini akan menentukan apakah pelatihan muncul di form pendaftaran user)`)) {
+      setLoading(true);
+      const { error } = await supabase
+        .from('kegiatan_2026')
+        .update({ is_published: !currentStatus })
+        .eq('id', id);
+      
+      if (error) alert("Gagal memperbarui status: " + error.message);
+      fetchData();
+      setLoading(false);
+    }
   };
 
   const handleUpdateStatus = async (id: string, status: string, namaPelatihan: string) => {
@@ -130,11 +145,10 @@ export default function AdminPelatihanPage() {
       <div className="max-w-7xl mx-auto">
         <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
-            <span className="bg-indigo-100 text-indigo-600 px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-indigo-200">System V2.1</span>
+            <span className="bg-indigo-100 text-indigo-600 px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-indigo-200">System V2.2</span>
             <h1 className="text-4xl font-black text-[#1A1A40] mt-2 tracking-tighter uppercase italic">Control Panel Pelatihan</h1>
           </div>
           
-          {/* Global Stats Brief */}
           <div className="flex gap-4">
             <div className="bg-white p-3 px-5 rounded-2xl shadow-sm border border-slate-100">
               <p className="text-[9px] font-bold text-slate-400 uppercase">Total Pendaftar</p>
@@ -148,7 +162,6 @@ export default function AdminPelatihanPage() {
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          
           {/* KOLOM KIRI: Form Input */}
           <div className="lg:col-span-4">
             <div className="sticky top-8">
@@ -176,8 +189,6 @@ export default function AdminPelatihanPage() {
 
           {/* KOLOM KANAN: Monitoring & Validasi */}
           <div className="lg:col-span-8 space-y-8">
-            
-            {/* Tabel 1: Data Program Pelatihan & Kuota */}
             <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
               <div className="p-4 bg-gray-50 border-b font-bold text-gray-700 flex justify-between items-center">
                 <span className="text-xs uppercase tracking-widest flex items-center gap-2">
@@ -191,6 +202,7 @@ export default function AdminPelatihanPage() {
                     <tr>
                       <th className="p-4 w-12 text-center">No</th>
                       <th className="p-4">Nama Pelatihan</th>
+                      <th className="p-4 text-center">Status</th>
                       <th className="p-4 text-center">Maks Kuota</th>
                       <th className="p-4 text-center">Peserta (Diterima)</th>
                       <th className="p-4 text-center">Aksi</th>
@@ -198,23 +210,44 @@ export default function AdminPelatihanPage() {
                   </thead>
                   <tbody className="divide-y divide-gray-50">
                     {daftarPelatihan.map((item, index) => (
-                      <tr key={item.id} className="hover:bg-slate-50 transition-colors group">
+                      <tr key={item.id} className={`hover:bg-slate-50 transition-colors group ${!item.is_published ? 'opacity-60 bg-gray-50/50' : ''}`}>
                         <td className="p-4 text-center font-bold text-slate-300 group-hover:text-indigo-500 transition-colors">{index + 1}</td>
                         <td className="p-4">
                           <div className="font-bold text-gray-800 text-sm">{item.nama}</div>
                           <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{item.jadwal}</div>
+                        </td>
+                        <td className="p-4 text-center">
+                           <span className={`text-[8px] font-black px-2 py-1 rounded uppercase tracking-tighter ${item.is_published ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                             {item.is_published ? 'Aktif' : 'Berakhir'}
+                           </span>
                         </td>
                         <td className="p-4 text-center font-black text-slate-600">{item.kuota}</td>
                         <td className="p-4 text-center">
                           <div className="text-lg font-black text-indigo-600">{statsPerPelatihan[item.nama]?.diterima || 0}</div>
                           <div className="text-[9px] font-bold text-gray-300 uppercase tracking-widest italic">Peserta Fix</div>
                         </td>
-                        <td className="p-4 text-center space-x-3">
-                          <button onClick={() => {
-                            setEditId(item.id);
-                            setFormData({nama: item.nama, jadwal: item.jadwal, kuota: item.kuota.toString(), deskripsi: item.deskripsi});
-                          }} className="text-blue-600 hover:text-blue-800 text-[10px] font-black uppercase underline decoration-2 underline-offset-4 transition-all">Edit</button>
-                          <button onClick={() => handleHapusKegiatan(item.id)} className="text-red-400 hover:text-red-600 text-[10px] font-bold uppercase transition-colors">Hapus</button>
+                        <td className="p-4 text-center">
+                          <div className="flex flex-col gap-2 items-center">
+                            <div className="flex gap-3">
+                              <button onClick={() => {
+                                setEditId(item.id);
+                                setFormData({nama: item.nama, jadwal: item.jadwal, kuota: item.kuota.toString(), deskripsi: item.deskripsi});
+                              }} className="text-blue-600 hover:text-blue-800 text-[10px] font-black uppercase underline decoration-2 underline-offset-4 transition-all">Edit</button>
+                              
+                              <button onClick={() => handleHapusKegiatan(item.id)} className="text-red-400 hover:text-red-600 text-[10px] font-bold uppercase transition-colors">Hapus</button>
+                            </div>
+                            
+                            <button 
+                              onClick={() => handleTogglePublikasi(item.id, item.is_published)}
+                              className={`text-[9px] font-black uppercase px-3 py-1.5 rounded-lg border transition-all ${
+                                item.is_published 
+                                ? 'bg-orange-50 text-orange-600 border-orange-200 hover:bg-orange-600 hover:text-white' 
+                                : 'bg-green-50 text-green-600 border-green-200 hover:bg-green-600 hover:text-white'
+                              }`}
+                            >
+                              {item.is_published ? 'Akhiri Publikasi' : 'Buka Publikasi'}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -223,7 +256,7 @@ export default function AdminPelatihanPage() {
               </div>
             </div>
 
-            {/* Tabel 2: Konfirmasi & Filter Pendaftar */}
+            {/* Tabel 2: Konfirmasi & Filter Pendaftar (Sama seperti sebelumnya) */}
             <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
               <div className="p-5 bg-[#1A1A40] text-white flex flex-col md:flex-row justify-between items-center gap-4">
                 <div>
@@ -231,7 +264,6 @@ export default function AdminPelatihanPage() {
                   <p className="text-[9px] text-indigo-300 font-bold uppercase mt-1">Total {filteredPeserta.length} Peserta terfilter</p>
                 </div>
                 
-                {/* Filter Judul Pelatihan */}
                 <div className="flex items-center gap-3">
                    <select 
                     value={filterPelatihan}
@@ -246,7 +278,6 @@ export default function AdminPelatihanPage() {
                 </div>
               </div>
 
-              {/* Stat Brief for Selected Filter */}
               {filterPelatihan !== 'Semua' && (
                 <div className="flex divide-x border-b bg-indigo-50/50 divide-indigo-100">
                   <div className="flex-1 p-3 text-center">
