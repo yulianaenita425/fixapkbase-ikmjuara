@@ -20,7 +20,7 @@ export default function PenelusuranIKM() {
   const [profile, setProfile] = useState<any>(null)
   const [layanan, setLayanan] = useState<any[]>([])
   const [pelatihan, setPelatihan] = useState<any[]>([])
-  const [showNotFound, setShowNotFound] = useState(false) // Penambahan State Modal
+  const [showNotFound, setShowNotFound] = useState(false)
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -41,12 +41,26 @@ export default function PenelusuranIKM() {
         .maybeSingle()
 
       if (errIKM) throw errIKM
+
+      // --- LOGIKA PENCATATAN LOG PENCARIAN GAGAL ---
       if (!dataIKM) {
-        // Mengganti alert dengan pemicu Modal Interaktif
+        await supabase.from("activity_logs").insert([{
+          role: 'user/public',
+          action_type: 'pencarian',
+          description: `Pencarian GAGAL untuk NIB/NIK/Nama: ${cleanQuery}`,
+        }]);
+
         setShowNotFound(true)
         setLoading(false)
         return
       }
+
+      // --- LOGIKA PENCATATAN LOG PENCARIAN BERHASIL ---
+      await supabase.from("activity_logs").insert([{
+        role: 'user/public',
+        action_type: 'pencarian',
+        description: `Pencarian BERHASIL untuk: ${dataIKM.nama_lengkap} (NIB: ${dataIKM.no_nib})`,
+      }]);
 
       setProfile(dataIKM)
 
@@ -110,13 +124,11 @@ export default function PenelusuranIKM() {
       <main className="flex-grow p-4 md:p-8">
         <div className="max-w-6xl mx-auto bg-indigo-950 p-8 md:p-12 rounded-[40px] shadow-2xl mb-8 border-b-[10px] border-indigo-600">
           
-          {/* BAGIAN HEADER DENGAN TOMBOL KEMBALI */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
             <h1 className="text-3xl font-black text-white italic uppercase tracking-tighter flex items-center gap-3">
               <span className="text-4xl">🔎</span> PENELUSURAN DATA IKM
             </h1>
             
-            {/* TOMBOL BERANDA */}
             <Link href="/" className="bg-white/10 hover:bg-white/20 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all border border-white/20 flex items-center gap-2 w-fit">
               🏠 Beranda Utama
             </Link>
@@ -231,7 +243,7 @@ export default function PenelusuranIKM() {
           </div>
         )}
 
-        {/* MODAL NOT FOUND INTERAKTIF (PENAMBAHAN BARU) */}
+        {/* MODAL NOT FOUND INTERAKTIF */}
         {showNotFound && (
           <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-indigo-950/80 backdrop-blur-sm animate-in fade-in duration-300">
             <div className="bg-white w-full max-w-md rounded-[40px] overflow-hidden shadow-2xl border-b-[10px] border-rose-500 animate-in zoom-in-95 duration-300">
