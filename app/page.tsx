@@ -7,27 +7,50 @@ import {
   MessageCircle, ArrowRight, User, Hash, 
   ShoppingBag, MapPin, Briefcase, CheckCircle2, Volume2 
 } from 'lucide-react';
-import { supabase } from '@/lib/supabaseClient'; // Pastikan path ini benar
+import { supabase } from '../lib/supabaseClient'; 
 import { useNotification } from './hooks/useNotification';
 
 export default function IKMJuaraFullPage() {
-  // --- 1. DEKLARASI HOOK & STATE ---
   const { toast, showNotification } = useNotification();
   const [showModal, setShowModal] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [animationData, setAnimationData] = useState(null);
   const [layanan, setLayanan] = useState("");
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  const [showPelatihanList, setShowPelatihanList] = useState(false);
+  
+  // --- STATE BARU ---
+  const [daftarPelatihan, setDaftarPelatihan] = useState<string[]>([]);
+  const [isLoadingPelatihan, setIsLoadingPelatihan] = useState(false);
+  const [showPelatihanList, setShowPelatihanList] = useState(false); // Sebelumnya belum ada
   const [loadingTamu, setLoadingTamu] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const daftarPelatihan = [
-    "Pelatihan Digital Marketing IKM 2026",
-    "Pelatihan Desain Kemasan Inovatif",
-    "Workshop Manajemen Keuangan Industri",
-    "Bimtek Standarisasi Mutu Produk"
-  ];
+  // --- FETCH DATA PELATIHAN ---
+  useEffect(() => {
+    const fetchPelatihan = async () => {
+      setIsLoadingPelatihan(true);
+      try {
+        const { data, error } = await supabase
+          .from('kegiatan_2026') 
+          .select('nama')        // Mengambil kolom 'nama'
+          .eq('tahun', 2026);
+
+        if (error) throw error;
+
+        if (data) {
+          // Sesuaikan 'item.nama' dengan select di atas
+          const list = data.map(item => item.nama);
+          setDaftarPelatihan(list);
+        }
+      } catch (error: any) {
+        console.error("Error fetching pelatihan:", error.message);
+      } finally {
+        setIsLoadingPelatihan(false);
+      }
+    };
+
+    fetchPelatihan();
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -38,9 +61,6 @@ export default function IKMJuaraFullPage() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // --- 2. HANDLER FUNCTIONS ---
-  
-  // Fungsi Simpan ke Supabase (Sinkron dengan Database ikm_register)
   const handlePendaftaran = async (formData: FormData) => {
     setIsSubmitting(true);
     const rawData = {
@@ -56,19 +76,11 @@ export default function IKMJuaraFullPage() {
     };
 
     try {
-      const { error } = await supabase
-        .from("ikm_register")
-        .insert([rawData]);
-
+      const { error } = await supabase.from("ikm_register").insert([rawData]);
       if (error) throw error;
 
       showNotification("PENDAFTARAN BERHASIL DISIMPAN!"); 
-      
-      // Opsional: Reset form secara manual jika diperlukan atau refresh halaman
-      setTimeout(() => {
-        window.location.reload();
-      }, 2000);
-
+      setTimeout(() => { window.location.reload(); }, 2000);
     } catch (error: any) {
       console.error(error);
       alert("Gagal menyimpan: " + (error.message || "Terjadi kesalahan koneksi"));
@@ -80,7 +92,7 @@ export default function IKMJuaraFullPage() {
   const validateInput = (name: string, value: string) => {
     if (name === 'nib' && value.length !== 13) return "NIB harus 13 digit.";
     if (name === 'nik' && value.length !== 16) return "NIK harus 16 digit.";
-    if ((name === 'nib' || name === 'nik' || name === 'hp' || name === 'whatsapp') && !/^\d+$/.test(value)) return "Wajib angka.";
+    if (['nib', 'nik', 'hp', 'whatsapp'].includes(name) && !/^\d+$/.test(value)) return "Wajib angka.";
     return "";
   };
 
@@ -100,8 +112,6 @@ export default function IKMJuaraFullPage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] overflow-x-hidden text-[#1A1A40]">
-      
-      {/* --- UI NOTIFIKASI TOAST --- */}
       {toast?.show && (
         <div className="fixed top-10 left-1/2 -translate-x-1/2 z-[300] animate-scaleIn">
           <div className="bg-[#1A1A40] text-white px-8 py-4 rounded-2xl shadow-2xl border-2 border-indigo-500 flex items-center gap-4">
@@ -117,10 +127,7 @@ export default function IKMJuaraFullPage() {
         </div>
       )}
 
-      {/* NAVIGATION */}
-      <nav className={`fixed w-full z-[100] transition-all duration-500 ${
-        scrolled ? "py-3 bg-[#1A1A40]/90 backdrop-blur-xl shadow-2xl" : "py-6 bg-transparent"
-      }`}>
+      <nav className={`fixed w-full z-[100] transition-all duration-500 ${scrolled ? "py-3 bg-[#1A1A40]/90 backdrop-blur-xl shadow-2xl" : "py-6 bg-transparent"}`}>
         <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
           <div className="flex items-center gap-3 group cursor-pointer">
             <div className="bg-white p-1.5 rounded-xl shadow-lg group-hover:rotate-12 transition-transform">
@@ -133,17 +140,11 @@ export default function IKMJuaraFullPage() {
           <div className="hidden md:flex items-center gap-8">
             <a href="#profil" className={`font-bold text-sm tracking-widest hover:text-yellow-400 transition ${scrolled ? "text-slate-300" : "text-[#1A1A40]/70"}`}>PROFIL</a>
             <a href="#form-pendaftaran" className={`font-bold text-sm tracking-widest hover:text-yellow-400 transition ${scrolled ? "text-slate-300" : "text-[#1A1A40]/70"}`}>PENDAFTARAN</a>
-            <button 
-              onClick={() => setShowModal(true)}
-              className="bg-gradient-to-r from-indigo-600 to-violet-600 px-6 py-2.5 rounded-full text-white font-bold text-sm shadow-lg hover:scale-105 active:scale-95 transition-all"
-            >
-              AKSES DATA IKM
-            </button>
+            <button onClick={() => setShowModal(true)} className="bg-gradient-to-r from-indigo-600 to-violet-600 px-6 py-2.5 rounded-full text-white font-bold text-sm shadow-lg hover:scale-105 active:scale-95 transition-all">AKSES DATA IKM</button>
           </div>
         </div>
       </nav>
 
-      {/* HERO SECTION */}
       <section className="relative min-h-screen flex items-center pt-20">
         <div className="absolute top-0 right-0 w-[50%] h-[80%] bg-gradient-to-bl from-indigo-100/50 to-transparent rounded-bl-[200px] -z-10" />
         <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-12 items-center">
@@ -152,25 +153,12 @@ export default function IKMJuaraFullPage() {
               <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
               <span className="text-xs font-black uppercase tracking-[0.2em] text-slate-500 font-mono">System Active: IKM JUARA v2.0</span>
             </div>
-            <h1 className="text-5xl lg:text-7xl font-black leading-[1.1] mb-8 text-[#1A1A40]">
-              Akselerasi Industri <br/>
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-purple-600 to-red-500">
-                Lokal ke Global.
-              </span>
-            </h1>
+            <h1 className="text-5xl lg:text-7xl font-black leading-[1.1] mb-8 text-[#1A1A40]">Akselerasi Industri <br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-purple-600 to-red-500">Lokal ke Global.</span></h1>
             <div className="flex items-center gap-4 mb-10 p-4 bg-white/50 backdrop-blur rounded-2xl border border-white max-w-sm">
-               <div className="w-16 h-16">
-                  {animationData && <Lottie animationData={animationData} loop={true} />}
-               </div>
-               <p className="text-sm font-semibold text-slate-600 italic">
-                  "Mendorong efisiensi dan jaminan usaha industri Kota Madiun."
-               </p>
+               <div className="w-16 h-16">{animationData && <Lottie animationData={animationData} loop={true} />}</div>
+               <p className="text-sm font-semibold text-slate-600 italic">"Mendorong efisiensi dan jaminan usaha industri Kota Madiun."</p>
             </div>
-            <div className="flex flex-wrap gap-5">
-              <a href="#form-pendaftaran" className="px-10 py-5 bg-[#1A1A40] text-white rounded-2xl font-bold shadow-xl hover:-translate-y-1 transition-all flex items-center gap-3">
-                  MULAI DAFTAR SEKARANG <ArrowRight size={20}/>
-              </a>
-            </div>
+            <a href="#form-pendaftaran" className="inline-flex px-10 py-5 bg-[#1A1A40] text-white rounded-2xl font-bold shadow-xl hover:-translate-y-1 transition-all items-center gap-3">MULAI DAFTAR SEKARANG <ArrowRight size={20}/></a>
           </div>
           <div className="relative flex justify-center items-center">
             <div className="absolute w-[120%] h-[120%] bg-indigo-500/10 rounded-full blur-[120px] animate-pulse"></div>
@@ -181,56 +169,10 @@ export default function IKMJuaraFullPage() {
         </div>
       </section>
 
-      {/* PROFIL SECTION */}
-      <section id="profil" className="py-24 px-6 bg-white">
-        <div className="max-w-5xl mx-auto">
-          <div className="bg-gradient-to-r from-red-600 to-red-800 rounded-3xl p-10 mb-16 shadow-2xl text-center transform hover:scale-[1.01] transition-all">
-            <h2 className="text-white text-3xl md:text-5xl font-black leading-tight uppercase tracking-tighter">
-              "IKM JUARA – Dari Lokal Berkarya, ke Global Berdaya!"
-            </h2>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-12 items-start">
-            <div className="space-y-6">
-              <div className="flex items-center gap-3">
-                <Award className="text-indigo-600 w-10 h-10" />
-                <h2 className="text-4xl font-black text-[#1A1A40]">Apa itu <span className="text-indigo-600">IKM JUARA?</span></h2>
-              </div>
-              <p className="text-xl font-medium text-slate-600 leading-relaxed border-l-8 border-indigo-600 pl-6 italic">
-                Integrasi Konsultasi Mandiri untuk Jaminan Usaha, Akselerasi, dan Produktivitas Industri Anda!
-              </p>
-              <p className="text-slate-500 text-lg leading-relaxed">
-                Melalui program ini, pemerintah Kota Madiun menghadirkan layanan klinik konsultasi industri terintegrasi 
-                yang menjadi mitra strategis para pelaku IKM untuk naik kelas.
-              </p>
-            </div>
-
-            <div className="grid gap-4">
-              {[
-                { icon: <ShieldCheck className="text-green-600" />, title: "Legalitas", desc: "Pendampingan perlindungan usaha." },
-                { icon: <TrendingUp className="text-blue-600" />, title: "Produktivitas", desc: "Efisiensi proses industri." },
-                { icon: <Globe className="text-purple-600" />, title: "Pasar Global", desc: "Branding & Akses Ekspor." }
-              ].map((item, i) => (
-                <div key={i} className="flex gap-5 items-center bg-slate-50 p-6 rounded-2xl border border-slate-100 hover:shadow-lg transition-all">
-                  <div className="bg-white p-3 rounded-xl shadow-sm">{item.icon}</div>
-                  <div>
-                    <h4 className="font-black uppercase tracking-widest text-sm">{item.title}</h4>
-                    <p className="text-slate-500 text-sm font-medium">{item.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* FORM PENDAFTARAN SECTION */}
       <section id="form-pendaftaran" className="py-24 px-6 bg-[#1A1A40]">
         <div className="max-w-4xl mx-auto bg-white rounded-[3rem] shadow-3xl overflow-hidden border-[12px] border-white/10">
           <div className="p-10 bg-slate-50 border-b text-center">
-            <div className="inline-block p-4 bg-indigo-600 text-white rounded-2xl mb-4 shadow-xl shadow-indigo-200">
-              <Briefcase size={32} />
-            </div>
+            <div className="inline-block p-4 bg-indigo-600 text-white rounded-2xl mb-4 shadow-xl shadow-indigo-200"><Briefcase size={32} /></div>
             <h2 className="text-3xl font-black text-[#1A1A40] uppercase tracking-tighter">Formulir Pendaftaran Binaan</h2>
             <p className="text-slate-500 font-bold mt-2 italic">Lengkapi data untuk mengakselerasi bisnis Anda</p>
           </div>
@@ -289,19 +231,20 @@ export default function IKMJuaraFullPage() {
 
             {showPelatihanList && (
               <div className="p-6 bg-orange-50 border-2 border-orange-100 rounded-[2rem] animate-scaleIn">
-                <label className="text-xs font-black uppercase tracking-widest text-orange-700 mb-3 block italic text-center">Tersedia Pelatihan Tahun 2026</label>
-                <select name="sub_pelatihan" required className="w-full p-4 bg-white border-2 border-orange-200 rounded-2xl outline-none font-bold text-orange-900">
-                  <option value="">-- Pilih Jenis Pelatihan --</option>
+                <label className="text-xs font-black uppercase tracking-widest text-orange-700 mb-3 block italic text-center">
+                  {isLoadingPelatihan ? "Memuat Daftar Pelatihan..." : "Tersedia Pelatihan Tahun 2026"}
+                </label>
+                <select name="sub_pelatihan" required className="w-full p-4 bg-white border-2 border-orange-200 rounded-2xl outline-none font-bold text-orange-900" disabled={isLoadingPelatihan}>
+                  <option value="">{isLoadingPelatihan ? "-- Mohon Tunggu --" : "-- Pilih Jenis Pelatihan --"}</option>
                   {daftarPelatihan.map((p, i) => <option key={i} value={p}>{p}</option>)}
                 </select>
+                {!isLoadingPelatihan && daftarPelatihan.length === 0 && (
+                  <p className="text-[10px] text-orange-600 mt-2 text-center uppercase font-bold">Belum ada jadwal pelatihan tersedia.</p>
+                )}
               </div>
             )}
 
-            <button 
-              type="submit" 
-              disabled={Object.values(errors).some(e => e !== "") || !layanan || isSubmitting} 
-              className="w-full py-6 bg-[#1A1A40] text-white rounded-[2rem] font-black tracking-[0.2em] shadow-2xl hover:bg-indigo-600 hover:-translate-y-1 disabled:bg-slate-300 transition-all uppercase"
-            >
+            <button type="submit" disabled={Object.values(errors).some(e => e !== "") || !layanan || isSubmitting} className="w-full py-6 bg-[#1A1A40] text-white rounded-[2rem] font-black tracking-[0.2em] shadow-2xl hover:bg-indigo-600 hover:-translate-y-1 disabled:bg-slate-300 transition-all uppercase">
               {isSubmitting ? "Sedang Mengirim..." : "Kirim Data Binaan & Daftar JUARA"}
             </button>
           </form>
@@ -312,23 +255,14 @@ export default function IKMJuaraFullPage() {
       {showModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-[#1A1A40]/40 backdrop-blur-md">
           <div className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-3xl p-10 relative animate-scaleIn">
-            <button 
-              onClick={() => setShowModal(false)} 
-              className="absolute top-6 right-8 text-slate-400 hover:text-[#1A1A40] font-black text-2xl"
-            >
-              ×
-            </button>
-            
+            <button onClick={() => setShowModal(false)} className="absolute top-6 right-8 text-slate-400 hover:text-[#1A1A40] font-black text-2xl">×</button>
             <div className="text-center mb-8">
               <h3 className="text-3xl font-black italic uppercase tracking-tighter">Buku Tamu</h3>
               <p className="text-slate-500 text-sm font-bold mt-2">Identitas Pengakses Sistem IKM JUARA</p>
             </div>
-
-            <form 
-              onSubmit={async (e) => {
+            <form onSubmit={async (e) => {
                 e.preventDefault();
                 setLoadingTamu(true);
-                
                 const target = e.target as any;
                 const dataTamu = {
                   nama: target.nama.value,
@@ -336,49 +270,30 @@ export default function IKMJuaraFullPage() {
                   alamat: target.alamat.value,
                   waktu_kunjungan: new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })
                 };
-
                 try {
-                  const { error } = await supabase
-                    .from("buku_tamu")
-                    .insert([dataTamu]);
-
+                  const { error } = await supabase.from("buku_tamu").insert([dataTamu]);
                   if (error) throw error;
-                  
                   showNotification("AKSES DATA DIBERIKAN!");
-                  
-                  setTimeout(() => {
-                    window.location.href = '/pencarian';
-                  }, 1500);
-
+                  setTimeout(() => { window.location.href = '/pencarian'; }, 1500);
                 } catch (err) {
-                  console.error("Gagal simpan log tamu:", err);
                   window.location.href = '/pencarian';
                 } finally {
                   setLoadingTamu(false);
                 }
-              }} 
-              className="space-y-4"
-            >
+              }} className="space-y-4">
               <div className="space-y-1">
                 <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Nama Pengunjung</label>
                 <input name="nama" required type="text" placeholder="Nama Lengkap" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold shadow-inner focus:border-indigo-500 border-2 border-transparent transition-all" />
               </div>
-              
               <div className="space-y-1">
                 <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Nomor WhatsApp</label>
                 <input name="whatsapp" required type="text" onChange={handleNumericInput} placeholder="0812xxxx" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold shadow-inner focus:border-indigo-500 border-2 border-transparent transition-all" />
               </div>
-              
               <div className="space-y-1">
                 <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Alamat / Instansi</label>
                 <textarea name="alamat" required placeholder="Contoh: Jl. Pahlawan No. 1, Kota Madiun" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold shadow-inner h-24 focus:border-indigo-500 border-2 border-transparent transition-all" />
               </div>
-
-              <button 
-                type="submit" 
-                disabled={loadingTamu}
-                className="w-full py-5 bg-[#1A1A40] text-white rounded-2xl font-black uppercase tracking-widest shadow-xl hover:bg-indigo-600 transition-all disabled:bg-slate-400 flex justify-center items-center gap-2 mt-4"
-              >
+              <button type="submit" disabled={loadingTamu} className="w-full py-5 bg-[#1A1A40] text-white rounded-2xl font-black uppercase tracking-widest shadow-xl hover:bg-indigo-600 transition-all disabled:bg-slate-400 flex justify-center items-center gap-2 mt-4">
                 {loadingTamu ? "MENCATAT..." : "MASUK KE DATABASE IKM"}
               </button>
             </form>
@@ -386,20 +301,16 @@ export default function IKMJuaraFullPage() {
         </div>
       )}
 
-      {/* FOOTER SECTION */}
       <footer className="py-16 text-center bg-white border-t border-slate-100">
         <blockquote className="text-slate-400 italic text-xl font-serif max-w-2xl mx-auto px-6 mb-8">
           "Dengan semangat Juara, setiap IKM di Madiun akan menjadi pelaku industri yang tak hanya tumbuh, tapi juga menginspirasi."
         </blockquote>
-        
         <div className="flex justify-center gap-6 text-xs font-black uppercase tracking-[0.2em] text-slate-400">
           <a href="/privacy" className="hover:text-indigo-600 transition-colors">Privacy</a>
           <span className="text-slate-200">•</span>
           <a href="/support" className="hover:text-indigo-600 transition-colors">Support</a>
         </div>
-        <p className="mt-4 text-[10px] text-slate-300 font-bold uppercase tracking-widest">
-          © 2026 E-Government Kota Madiun
-        </p>
+        <p className="mt-4 text-[10px] text-slate-300 font-bold uppercase tracking-widest">© 2026 E-Government Kota Madiun</p>
       </footer>
 
       <style jsx global>{`
