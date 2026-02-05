@@ -1,13 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation" // Tambahkan useRouter
-import { supabase } from '@/lib/supabaseClient' // Import supabase
-import Cookies from 'js-cookie' // Import Cookies
+import { usePathname, useRouter } from "next/navigation"
+import { supabase } from '@/lib/supabaseClient'
+import Cookies from 'js-cookie'
 
 const menuItems = [
   { name: "Dashboard", path: "/admin", icon: "📊" },
+  { name: "Pengajuan Binaan", path: "/admin/pengajuanbinaan", icon: "📝" },
   { name: "IKM Binaan", path: "/admin/ikm-binaan", icon: "👥" },
   { name: "Layanan IKM Juara", path: "/admin/layanan", icon: "🏆" },
   { name: "Master Data IKM Juara", path: "/admin/data-layanan", icon: "📂" },
@@ -18,24 +19,49 @@ const menuItems = [
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const router = useRouter() // Inisialisasi router
-  const [isSidebarOpen, setSidebarOpen] = useState(false) 
-  
+  const router = useRouter()
+  const [isSidebarOpen, setSidebarOpen] = useState(false)
+  const [pendingCount, setPendingCount] = useState(0)
+
+  useEffect(() => {
+    const fetchPendingCount = async () => {
+      const { count, error } = await supabase
+        .from('ikm_register')
+        .select('*', { count: 'exact', head: true })
+        .eq('status_verifikasi', 'PENDING');
+
+      if (!error) {
+        setPendingCount(count || 0);
+      }
+    };
+
+    fetchPendingCount();
+
+    // Perbaikan Error TS: Menggunakan any pada channel untuk menghindari strict overload check
+    const subscription = supabase
+      .channel('pending-badge-realtime')
+      .on(
+        'postgres_changes' as any, 
+        { event: '*', table: 'ikm_register', schema: 'public' }, 
+        () => {
+          fetchPendingCount();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(subscription);
+    };
+  }, []);
+
   const activeMenu = menuItems.find(item => item.path === pathname) || { name: "Admin Panel", icon: "⚙️" };
 
-  // FUNGSI LOGOUT
   const handleLogout = async () => {
     const confirmLogout = confirm("Apakah Anda yakin ingin keluar dari sistem?");
     if (!confirmLogout) return;
-
     try {
-      // 1. Sign out dari Supabase
       await supabase.auth.signOut();
-      
-      // 2. Hapus Cookie agar Middleware memblokir akses
       Cookies.remove('sb-access-token');
-
-      // 3. Redirect ke halaman login
       router.push('/login');
     } catch (error) {
       console.error("Error saat logout:", error);
@@ -79,26 +105,40 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
           {menuItems.map((item) => {
             const isActive = pathname === item.path
+            const isPengajuan = item.name === "Pengajuan Binaan"
+            
             return (
               <Link key={item.path} href={item.path} onClick={() => setSidebarOpen(false)}>
                 <div className={`
-                  flex items-center gap-4 px-6 py-4 rounded-2xl font-bold transition-all duration-200 group
+                  flex items-center gap-4 px-6 py-4 rounded-2xl font-bold transition-all duration-200 group relative
                   ${isActive 
                     ? "bg-indigo-600 text-white shadow-lg shadow-indigo-900/50" 
                     : "text-indigo-200/50 hover:bg-indigo-900 hover:text-white"}
                 `}>
-                  <span className={`text-xl ${isActive ? "scale-110" : "group-hover:scale-110"} transition-transform`}>
-                    {item.icon}
+                  <span className={`text-xl transition-transform ${isActive ? "scale-110" : "group-hover:scale-110"}`}>
+                    {isPengajuan && !isActive && pendingCount > 0 ? (
+                      <span className="relative flex">
+                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                         <span className="relative">🔔</span>
+                      </span>
+                    ) : item.icon}
                   </span>
+                  
                   <span className="text-xs uppercase tracking-widest">{item.name}</span>
-                  {isActive && <div className="ml-auto w-2 h-2 bg-white rounded-full animate-pulse"></div>}
+
+                  {isPengajuan && pendingCount > 0 && (
+                    <span className="ml-auto bg-rose-500 text-white text-[10px] font-black px-2 py-1 rounded-lg shadow-lg animate-bounce">
+                      {pendingCount}
+                    </span>
+                  )}
+
+                  {isActive && !isPengajuan && <div className="ml-auto w-2 h-2 bg-white rounded-full animate-pulse"></div>}
                 </div>
               </Link>
             )
           })}
         </nav>
 
-        {/* TOMBOL LOGOUT YANG SUDAH DIGABUNG */}
         <div className="p-6 border-t border-indigo-900/50">
           <button 
             onClick={handleLogout}
@@ -111,7 +151,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* 4. MAIN CONTENT AREA */}
       <main className="flex-1 flex flex-col min-w-0">
-        {/* TOP NAVBAR */}
         <header className="h-20 bg-white border-b border-slate-200 sticky top-0 z-40 px-6 md:px-10 flex items-center justify-between shadow-sm">
           <div className="flex items-center gap-4 ml-12 lg:ml-0"> 
             <span className="text-xl md:text-2xl">{activeMenu.icon}</span>
@@ -136,8 +175,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
         </header>
 
-        {/* CONTENT PAGE */}
-        <div className="p-4 md:p-8">
+        <div className="p-4 md:p-8 overflow-y-auto flex-1">
           {children}
         </div>
       </main>

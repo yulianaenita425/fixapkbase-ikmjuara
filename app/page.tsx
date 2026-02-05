@@ -7,13 +7,12 @@ import {
   MessageCircle, ArrowRight, User, Hash, 
   ShoppingBag, MapPin, Briefcase, CheckCircle2, Volume2 
 } from 'lucide-react';
-// @ts-ignore
-import { handlePendaftaran } from './actions';
-import { useNotification } from './hooks/useNotification'; // 1. IMPORT HOOK
+import { supabase } from '@/lib/supabaseClient'; // Pastikan path ini benar
+import { useNotification } from './hooks/useNotification';
 
 export default function IKMJuaraFullPage() {
   // --- 1. DEKLARASI HOOK & STATE ---
-  const { toast, showNotification } = useNotification(); // 2. INISIALISASI HOOK
+  const { toast, showNotification } = useNotification();
   const [showModal, setShowModal] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [animationData, setAnimationData] = useState(null);
@@ -21,6 +20,7 @@ export default function IKMJuaraFullPage() {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [showPelatihanList, setShowPelatihanList] = useState(false);
   const [loadingTamu, setLoadingTamu] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const daftarPelatihan = [
     "Pelatihan Digital Marketing IKM 2026",
@@ -39,6 +39,44 @@ export default function IKMJuaraFullPage() {
   }, []);
 
   // --- 2. HANDLER FUNCTIONS ---
+  
+  // Fungsi Simpan ke Supabase (Sinkron dengan Database ikm_register)
+  const handlePendaftaran = async (formData: FormData) => {
+    setIsSubmitting(true);
+    const rawData = {
+      nama_lengkap: formData.get("nama"),
+      no_hp: formData.get("hp"),
+      no_nib: formData.get("nib"),
+      nik: formData.get("nik"),
+      nama_usaha: formData.get("nama_usaha"),
+      produk_utama: formData.get("produk"),
+      alamat_usaha: formData.get("alamat"),
+      layanan_prioritas: formData.get("layanan"),
+      sub_pelatihan: formData.get("sub_pelatihan") || null,
+    };
+
+    try {
+      const { error } = await supabase
+        .from("ikm_register")
+        .insert([rawData]);
+
+      if (error) throw error;
+
+      showNotification("PENDAFTARAN BERHASIL DISIMPAN!"); 
+      
+      // Opsional: Reset form secara manual jika diperlukan atau refresh halaman
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+
+    } catch (error: any) {
+      console.error(error);
+      alert("Gagal menyimpan: " + (error.message || "Terjadi kesalahan koneksi"));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const validateInput = (name: string, value: string) => {
     if (name === 'nib' && value.length !== 13) return "NIB harus 13 digit.";
     if (name === 'nik' && value.length !== 16) return "NIK harus 16 digit.";
@@ -63,7 +101,7 @@ export default function IKMJuaraFullPage() {
   return (
     <div className="min-h-screen bg-[#F8FAFC] overflow-x-hidden text-[#1A1A40]">
       
-      {/* --- 3. UI NOTIFIKASI TOAST --- */}
+      {/* --- UI NOTIFIKASI TOAST --- */}
       {toast?.show && (
         <div className="fixed top-10 left-1/2 -translate-x-1/2 z-[300] animate-scaleIn">
           <div className="bg-[#1A1A40] text-white px-8 py-4 rounded-2xl shadow-2xl border-2 border-indigo-500 flex items-center gap-4">
@@ -197,13 +235,7 @@ export default function IKMJuaraFullPage() {
             <p className="text-slate-500 font-bold mt-2 italic">Lengkapi data untuk mengakselerasi bisnis Anda</p>
           </div>
 
-          <form 
-            action={async (formData) => {
-              await handlePendaftaran(formData);
-              showNotification("PENDAFTARAN BERHASIL DISIMPAN!"); // TRIGGER NOTIF & DING
-            }} 
-            className="p-10 space-y-8"
-          >
+          <form action={handlePendaftaran} className="p-10 space-y-8">
             <div className="grid md:grid-cols-2 gap-8">
               <div className="space-y-3">
                 <label className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2"><User size={14}/> Nama Lengkap</label>
@@ -265,8 +297,12 @@ export default function IKMJuaraFullPage() {
               </div>
             )}
 
-            <button type="submit" disabled={Object.values(errors).some(e => e !== "") || !layanan} className="w-full py-6 bg-[#1A1A40] text-white rounded-[2rem] font-black tracking-[0.2em] shadow-2xl hover:bg-indigo-600 hover:-translate-y-1 disabled:bg-slate-300 transition-all uppercase">
-              Kirim Data Binaan & Daftar JUARA
+            <button 
+              type="submit" 
+              disabled={Object.values(errors).some(e => e !== "") || !layanan || isSubmitting} 
+              className="w-full py-6 bg-[#1A1A40] text-white rounded-[2rem] font-black tracking-[0.2em] shadow-2xl hover:bg-indigo-600 hover:-translate-y-1 disabled:bg-slate-300 transition-all uppercase"
+            >
+              {isSubmitting ? "Sedang Mengirim..." : "Kirim Data Binaan & Daftar JUARA"}
             </button>
           </form>
         </div>
@@ -302,17 +338,14 @@ export default function IKMJuaraFullPage() {
                 };
 
                 try {
-                  const { supabase } = await import('@/lib/supabaseClient');
                   const { error } = await supabase
                     .from("buku_tamu")
                     .insert([dataTamu]);
 
                   if (error) throw error;
                   
-                  // TRIGGER NOTIFIKASI SEBELUM REDIRECT
                   showNotification("AKSES DATA DIBERIKAN!");
                   
-                  // Tunggu sebentar agar user sempat lihat notif & dengar bunyi
                   setTimeout(() => {
                     window.location.href = '/pencarian';
                   }, 1500);
