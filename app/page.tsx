@@ -85,22 +85,6 @@ export default function IKMJuaraFullPage() {
       const { error: insertError } = await supabase.from("ikm_register").insert([rawData]);
       if (insertError) throw insertError;
 
-      // 2. FITUR AUTO-REDUCE KUOTA (Jika memilih pelatihan)
-      if (layanan === "Pelatihan Pemberdayaan IKM" && subPelatihanSelected) {
-        const { data: currentData } = await supabase
-          .from('kegiatan_2026')
-          .select('kuota')
-          .eq('nama', subPelatihanSelected)
-          .single();
-
-        if (currentData && currentData.kuota > 0) {
-          await supabase
-            .from('kegiatan_2026')
-            .update({ kuota: currentData.kuota - 1 })
-            .eq('nama', subPelatihanSelected);
-        }
-      }
-
       showNotification("PENDAFTARAN BERHASIL DISIMPAN!"); 
       setTimeout(() => { window.location.reload(); }, 2000);
     } catch (error: any) {
