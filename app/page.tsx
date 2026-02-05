@@ -10,6 +10,14 @@ import {
 import { supabase } from '../lib/supabaseClient'; 
 import { useNotification } from './hooks/useNotification';
 
+// Definisi Tipe untuk Pelatihan
+interface Pelatihan {
+  nama: string;
+  jadwal: string;
+  kuota: number;
+  deskripsi: string;
+}
+
 export default function IKMJuaraFullPage() {
   const { toast, showNotification } = useNotification();
   const [showModal, setShowModal] = useState(false);
@@ -18,10 +26,11 @@ export default function IKMJuaraFullPage() {
   const [layanan, setLayanan] = useState("");
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   
-  // --- STATE BARU ---
-  const [daftarPelatihan, setDaftarPelatihan] = useState<string[]>([]);
+  // --- STATE DATA ---
+  const [daftarPelatihan, setDaftarPelatihan] = useState<Pelatihan[]>([]);
+  const [layananDetail, setLayananDetail] = useState<Pelatihan | null>(null);
   const [isLoadingPelatihan, setIsLoadingPelatihan] = useState(false);
-  const [showPelatihanList, setShowPelatihanList] = useState(false); // Sebelumnya belum ada
+  const [showPelatihanList, setShowPelatihanList] = useState(false);
   const [loadingTamu, setLoadingTamu] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -32,23 +41,16 @@ export default function IKMJuaraFullPage() {
       try {
         const { data, error } = await supabase
           .from('kegiatan_2026') 
-          .select('nama')        // Mengambil kolom 'nama'
-          .eq('tahun', 2026);
+          .select('nama, jadwal, kuota, deskripsi'); 
 
         if (error) throw error;
-
-        if (data) {
-          // Sesuaikan 'item.nama' dengan select di atas
-          const list = data.map(item => item.nama);
-          setDaftarPelatihan(list);
-        }
+        if (data) setDaftarPelatihan(data);
       } catch (error: any) {
         console.error("Error fetching pelatihan:", error.message);
       } finally {
         setIsLoadingPelatihan(false);
       }
     };
-
     fetchPelatihan();
   }, []);
 
@@ -63,6 +65,8 @@ export default function IKMJuaraFullPage() {
 
   const handlePendaftaran = async (formData: FormData) => {
     setIsSubmitting(true);
+    const subPelatihanSelected = formData.get("sub_pelatihan") as string;
+
     const rawData = {
       nama_lengkap: formData.get("nama"),
       no_hp: formData.get("hp"),
@@ -72,12 +76,30 @@ export default function IKMJuaraFullPage() {
       produk_utama: formData.get("produk"),
       alamat_usaha: formData.get("alamat"),
       layanan_prioritas: formData.get("layanan"),
-      sub_pelatihan: formData.get("sub_pelatihan") || null,
+      sub_pelatihan: subPelatihanSelected || null,
     };
 
     try {
-      const { error } = await supabase.from("ikm_register").insert([rawData]);
-      if (error) throw error;
+      // 1. Simpan Data Pendaftaran
+      const { error: insertError } = await supabase.from("ikm_register").insert([rawData]);
+      if (insertError) throw insertError;
+
+      // 2. FITUR AUTO-REDUCE KUOTA (Jika memilih pelatihan)
+      if (layanan === "Pelatihan Pemberdayaan IKM" && subPelatihanSelected) {
+        // Ambil kuota terbaru dulu untuk memastikan
+        const { data: currentData } = await supabase
+          .from('kegiatan_2026')
+          .select('kuota')
+          .eq('nama', subPelatihanSelected)
+          .single();
+
+        if (currentData && currentData.kuota > 0) {
+          await supabase
+            .from('kegiatan_2026')
+            .update({ kuota: currentData.kuota - 1 })
+            .eq('nama', subPelatihanSelected);
+        }
+      }
 
       showNotification("PENDAFTARAN BERHASIL DISIMPAN!"); 
       setTimeout(() => { window.location.reload(); }, 2000);
@@ -108,6 +130,7 @@ export default function IKMJuaraFullPage() {
     const val = e.target.value;
     setLayanan(val);
     setShowPelatihanList(val === "Pelatihan Pemberdayaan IKM");
+    if (val !== "Pelatihan Pemberdayaan IKM") setLayananDetail(null);
   };
 
   return (
@@ -155,8 +178,8 @@ export default function IKMJuaraFullPage() {
             </div>
             <h1 className="text-5xl lg:text-7xl font-black leading-[1.1] mb-8 text-[#1A1A40]">Akselerasi Industri <br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-purple-600 to-red-500">Lokal ke Global.</span></h1>
             <div className="flex items-center gap-4 mb-10 p-4 bg-white/50 backdrop-blur rounded-2xl border border-white max-w-sm">
-               <div className="w-16 h-16">{animationData && <Lottie animationData={animationData} loop={true} />}</div>
-               <p className="text-sm font-semibold text-slate-600 italic">"Mendorong efisiensi dan jaminan usaha industri Kota Madiun."</p>
+                <div className="w-16 h-16">{animationData && <Lottie animationData={animationData} loop={true} />}</div>
+                <p className="text-sm font-semibold text-slate-600 italic">"Mendorong efisiensi dan jaminan usaha industri Kota Madiun."</p>
             </div>
             <a href="#form-pendaftaran" className="inline-flex px-10 py-5 bg-[#1A1A40] text-white rounded-2xl font-bold shadow-xl hover:-translate-y-1 transition-all items-center gap-3">MULAI DAFTAR SEKARANG <ArrowRight size={20}/></a>
           </div>
@@ -230,16 +253,51 @@ export default function IKMJuaraFullPage() {
             </div>
 
             {showPelatihanList && (
-              <div className="p-6 bg-orange-50 border-2 border-orange-100 rounded-[2rem] animate-scaleIn">
-                <label className="text-xs font-black uppercase tracking-widest text-orange-700 mb-3 block italic text-center">
-                  {isLoadingPelatihan ? "Memuat Daftar Pelatihan..." : "Tersedia Pelatihan Tahun 2026"}
+              <div className="p-6 bg-orange-50 border-2 border-orange-100 rounded-[2rem] animate-scaleIn space-y-4">
+                <label className="text-xs font-black uppercase tracking-widest text-orange-700 mb-1 block italic text-center">
+                  {isLoadingPelatihan ? "Memuat Daftar Pelatihan..." : "Detail Pelatihan Tersedia (Tahun 2026)"}
                 </label>
-                <select name="sub_pelatihan" required className="w-full p-4 bg-white border-2 border-orange-200 rounded-2xl outline-none font-bold text-orange-900" disabled={isLoadingPelatihan}>
-                  <option value="">{isLoadingPelatihan ? "-- Mohon Tunggu --" : "-- Pilih Jenis Pelatihan --"}</option>
-                  {daftarPelatihan.map((p, i) => <option key={i} value={p}>{p}</option>)}
+                
+                <select 
+                  name="sub_pelatihan" 
+                  required 
+                  className="w-full p-4 bg-white border-2 border-orange-200 rounded-2xl outline-none font-bold text-orange-900 shadow-sm"
+                  disabled={isLoadingPelatihan}
+                  onChange={(e) => {
+                    const selected = daftarPelatihan.find(p => p.nama === e.target.value);
+                    setLayananDetail(selected || null);
+                  }}
+                >
+                  <option value="">
+                    {isLoadingPelatihan ? "-- Mohon Tunggu --" : "-- Pilih Jenis Pelatihan --"}
+                  </option>
+                  
+                  {daftarPelatihan.map((p, i) => (
+                    <option key={i} value={p.nama} disabled={p.kuota <= 0}>
+                      {p.nama} — (Jadwal: {p.jadwal}) — [{p.kuota > 0 ? `Sisa Kuota: ${p.kuota}` : 'KUOTA PENUH'}]
+                    </option>
+                  ))}
                 </select>
+
+                {layananDetail && (
+                  <div className="mt-4 p-4 bg-white/50 rounded-xl border border-orange-200 animate-scaleIn">
+                    <h4 className="text-[10px] font-black text-orange-800 uppercase tracking-widest mb-1">Deskripsi Kegiatan:</h4>
+                    <p className="text-xs text-orange-700 leading-relaxed italic mb-3">
+                      {layananDetail.deskripsi || "Tidak ada deskripsi tersedia."}
+                    </p>
+                    <div className="flex gap-3">
+                      <span className="text-[9px] bg-orange-200 px-2 py-1 rounded font-bold text-orange-800 uppercase">Jadwal: {layananDetail.jadwal}</span>
+                      <span className={`text-[9px] px-2 py-1 rounded font-bold uppercase ${layananDetail.kuota > 0 ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`}>
+                        Kuota: {layananDetail.kuota}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 {!isLoadingPelatihan && daftarPelatihan.length === 0 && (
-                  <p className="text-[10px] text-orange-600 mt-2 text-center uppercase font-bold">Belum ada jadwal pelatihan tersedia.</p>
+                  <p className="text-[10px] text-orange-600 mt-2 text-center uppercase font-bold">
+                    Belum ada jadwal pelatihan tersedia di database.
+                  </p>
                 )}
               </div>
             )}
