@@ -2,12 +2,13 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Lottie from "lottie-react";
+// --- PERBAIKAN: Mengubah 'lucide-center' menjadi 'lucide-react' ---
 import { 
   ShieldCheck, TrendingUp, Globe, Award, 
   MessageCircle, ArrowRight, User, Hash, 
   ShoppingBag, MapPin, Briefcase, CheckCircle2, Volume2,
   Check, Star, Rocket, Zap
-} from 'lucide-react';
+} from 'lucide-react'; 
 import { supabase } from '../lib/supabaseClient'; 
 import { useNotification } from './hooks/useNotification';
 
@@ -42,7 +43,9 @@ export default function IKMJuaraFullPage() {
       try {
         const { data, error } = await supabase
           .from('kegiatan_2026') 
-          .select('nama, jadwal, kuota, deskripsi'); 
+          .select('nama, jadwal, kuota, deskripsi')
+          // FILTER PUBLISHED TETAP ADA
+          .eq('is_published', true); 
 
         if (error) throw error;
         if (data) setDaftarPelatihan(data);
@@ -68,6 +71,13 @@ export default function IKMJuaraFullPage() {
     setIsSubmitting(true);
     const subPelatihanSelected = formData.get("sub_pelatihan") as string;
 
+    // CEK KUOTA SEBELUM INSERT TETAP ADA
+    if (layanan === "Pelatihan Pemberdayaan IKM" && layananDetail && layananDetail.kuota <= 0) {
+      alert("Maaf, kuota untuk pelatihan ini sudah habis.");
+      setIsSubmitting(false);
+      return;
+    }
+
     const rawData = {
       nama_lengkap: formData.get("nama"),
       no_hp: formData.get("hp"),
@@ -81,7 +91,6 @@ export default function IKMJuaraFullPage() {
     };
 
     try {
-      // 1. Simpan Data Pendaftaran
       const { error: insertError } = await supabase.from("ikm_register").insert([rawData]);
       if (insertError) throw insertError;
 
@@ -177,7 +186,7 @@ export default function IKMJuaraFullPage() {
         </div>
       </section>
 
-      {/* SECTION PROFIL (BARU DITAMBAHKAN) */}
+      {/* SECTION PROFIL */}
       <section id="profil" className="py-24 bg-white relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-6 relative z-10">
           <div className="text-center mb-16">
@@ -354,8 +363,17 @@ export default function IKMJuaraFullPage() {
               </div>
             )}
 
-            <button type="submit" disabled={Object.values(errors).some(e => e !== "") || !layanan || isSubmitting} className="w-full py-6 bg-[#1A1A40] text-white rounded-[2rem] font-black tracking-[0.2em] shadow-2xl hover:bg-indigo-600 hover:-translate-y-1 disabled:bg-slate-300 transition-all uppercase">
-              {isSubmitting ? "Sedang Mengirim..." : "Kirim Data Binaan & Daftar JUARA"}
+            <button 
+              type="submit" 
+              disabled={
+                Object.values(errors).some(e => e !== "") || 
+                !layanan || 
+                isSubmitting || 
+                (layanan === "Pelatihan Pemberdayaan IKM" && (!layananDetail || layananDetail.kuota <= 0))
+              } 
+              className="w-full py-6 bg-[#1A1A40] text-white rounded-[2rem] font-black tracking-[0.2em] shadow-2xl hover:bg-indigo-600 hover:-translate-y-1 disabled:bg-slate-300 transition-all uppercase"
+            >
+              {isSubmitting ? "Sedang Mengirim..." : (layanan === "Pelatihan Pemberdayaan IKM" && layananDetail && layananDetail.kuota <= 0) ? "KUOTA PENUH" : "Kirim Data Binaan & Daftar JUARA"}
             </button>
           </form>
         </div>
