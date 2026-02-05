@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { supabase } from "@/lib/supabaseClient"
+import { supabase } from "../../lib/supabaseClient"
 import * as XLSX from "xlsx"
 import Link from "next/link"
 
@@ -20,6 +20,7 @@ export default function PenelusuranIKM() {
   const [profile, setProfile] = useState<any>(null)
   const [layanan, setLayanan] = useState<any[]>([])
   const [pelatihan, setPelatihan] = useState<any[]>([])
+  const [showNotFound, setShowNotFound] = useState(false) // Penambahan State Modal
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -29,6 +30,7 @@ export default function PenelusuranIKM() {
     setProfile(null)
     setLayanan([])
     setPelatihan([])
+    setShowNotFound(false)
 
     try {
       const cleanQuery = searchQuery.trim();
@@ -40,7 +42,8 @@ export default function PenelusuranIKM() {
 
       if (errIKM) throw errIKM
       if (!dataIKM) {
-        alert("Data IKM tidak ditemukan. Pastikan NIB/NIK/Nama sudah benar.");
+        // Mengganti alert dengan pemicu Modal Interaktif
+        setShowNotFound(true)
         setLoading(false)
         return
       }
@@ -84,7 +87,7 @@ export default function PenelusuranIKM() {
   }
 
   const handleReset = () => {
-    setSearchQuery(""); setProfile(null); setLayanan([]); setPelatihan([]);
+    setSearchQuery(""); setProfile(null); setLayanan([]); setPelatihan([]); setShowNotFound(false);
   }
 
   const exportExcel = () => {
@@ -222,6 +225,39 @@ export default function PenelusuranIKM() {
                       <div className="text-center py-10 italic text-slate-400 font-bold uppercase text-xs tracking-widest">Belum ada riwayat pelatihan.</div>
                     )}
                   </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL NOT FOUND INTERAKTIF (PENAMBAHAN BARU) */}
+        {showNotFound && (
+          <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-indigo-950/80 backdrop-blur-sm animate-in fade-in duration-300">
+            <div className="bg-white w-full max-w-md rounded-[40px] overflow-hidden shadow-2xl border-b-[10px] border-rose-500 animate-in zoom-in-95 duration-300">
+              <div className="p-10 text-center">
+                <div className="text-6xl mb-6 animate-bounce">🙏</div>
+                <h3 className="text-2xl font-black text-indigo-950 uppercase leading-tight mb-4">
+                  Mohon Maaf
+                </h3>
+                <p className="text-slate-600 font-medium leading-relaxed mb-8">
+                  Data IKM yang ditelusuri <span className="text-rose-600 font-bold">belum tercatat</span> pada Sistem IKM Juara / belum menjadi IKM Binaan kami.
+                </p>
+                
+                <div className="flex flex-col gap-3">
+                  <Link 
+                    href="/#form-pendaftaran" 
+                    className="bg-emerald-500 hover:bg-emerald-600 text-white p-5 rounded-2xl font-black uppercase tracking-wide transition-all shadow-lg active:scale-95 text-sm"
+                  >
+                    📝 Ajukan Menjadi IKM Binaan
+                  </Link>
+                  
+                  <button 
+                    onClick={() => setShowNotFound(false)}
+                    className="text-slate-400 font-black uppercase text-[10px] tracking-widest hover:text-rose-500 transition-colors"
+                  >
+                    Coba NIK/NIB Lain
+                  </button>
                 </div>
               </div>
             </div>
