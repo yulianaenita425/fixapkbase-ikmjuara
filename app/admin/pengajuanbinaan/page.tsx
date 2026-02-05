@@ -181,7 +181,7 @@ export default function PengajuanBinaan() {
             <div className="space-y-6">
               <DetailBox icon={<User />} label="Nama Pemilik" value={selectedIKM.nama_lengkap} />
               <DetailBox icon={<FileText />} label="NIK / NIB" value={`${selectedIKM.nik} / ${selectedIKM.no_nib}`} />
-              <DetailBox icon={<MapPin />} label="Alamat Lengkap" value={selectedIKM.alamat_lengkap} />
+              <DetailBox icon={<MapPin />} label="Alamat Usaha" value={selectedIKM.alamat_usaha} />
               <DetailBox icon={<Package />} label="Produk Utama" value={selectedIKM.produk_utama} />
               <DetailBox icon={<Calendar />} label="Tanggal Daftar" value={new Date(selectedIKM.created_at).toLocaleDateString('id-ID', { dateStyle: 'full' })} />
               
