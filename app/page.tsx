@@ -5,7 +5,8 @@ import Lottie from "lottie-react";
 import { 
   ShieldCheck, TrendingUp, Globe, Award, 
   MessageCircle, ArrowRight, User, Hash, 
-  ShoppingBag, MapPin, Briefcase, CheckCircle2, Volume2 
+  ShoppingBag, MapPin, Briefcase, CheckCircle2, Volume2,
+  Check, Star, Rocket, Zap
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient'; 
 import { useNotification } from './hooks/useNotification';
@@ -86,7 +87,6 @@ export default function IKMJuaraFullPage() {
 
       // 2. FITUR AUTO-REDUCE KUOTA (Jika memilih pelatihan)
       if (layanan === "Pelatihan Pemberdayaan IKM" && subPelatihanSelected) {
-        // Ambil kuota terbaru dulu untuk memastikan
         const { data: currentData } = await supabase
           .from('kegiatan_2026')
           .select('kuota')
@@ -168,6 +168,7 @@ export default function IKMJuaraFullPage() {
         </div>
       </nav>
 
+      {/* HERO SECTION */}
       <section className="relative min-h-screen flex items-center pt-20">
         <div className="absolute top-0 right-0 w-[50%] h-[80%] bg-gradient-to-bl from-indigo-100/50 to-transparent rounded-bl-[200px] -z-10" />
         <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-12 items-center">
@@ -192,6 +193,73 @@ export default function IKMJuaraFullPage() {
         </div>
       </section>
 
+      {/* SECTION PROFIL (BARU DITAMBAHKAN) */}
+      <section id="profil" className="py-24 bg-white relative overflow-hidden">
+        <div className="max-w-7xl mx-auto px-6 relative z-10">
+          <div className="text-center mb-16">
+            <h2 className="text-sm font-black text-indigo-600 tracking-[0.3em] uppercase mb-4">Profil Program</h2>
+            <h3 className="text-4xl lg:text-5xl font-black text-[#1A1A40] leading-tight">
+              IKM <span className="text-indigo-600">JUARA</span>
+            </h3>
+            <div className="w-24 h-2 bg-yellow-400 mx-auto mt-6 rounded-full"></div>
+            <p className="mt-8 text-xl font-bold italic text-slate-500 max-w-3xl mx-auto">
+              "IKM JUARA – Dari Lokal Berkarya, ke Global Berdaya!"
+            </p>
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+            <div className="space-y-6">
+              <p className="text-lg leading-relaxed text-slate-600 font-medium">
+                Kota Madiun terus meneguhkan posisinya sebagai kota yang ramah terhadap pertumbuhan industri kecil dan menengah. Melalui program <span className="font-bold text-[#1A1A40]">IKM JUARA</span>, pemerintah menghadirkan layanan klinik konsultasi industri terintegrasi yang menjadi mitra strategis para pelaku IKM untuk naik kelas dan bersaing di pasar global.
+              </p>
+              <p className="text-lg leading-relaxed text-slate-600 font-medium italic border-l-4 border-indigo-600 pl-6 bg-slate-50 py-4 rounded-r-2xl">
+                Integrasi Konsultasi Mandiri untuk Jaminan Usaha, Akselerasi, dan Produktivitas Industri Anda!
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-6">
+                {[
+                  { icon: <ShieldCheck className="text-green-500" />, text: "Legalitas Terjamin" },
+                  { icon: <TrendingUp className="text-blue-500" />, text: "Akselerasi Bisnis" },
+                  { icon: <Globe className="text-purple-500" />, text: "Orientasi Global" },
+                  { icon: <Award className="text-yellow-500" />, text: "Kualitas Juara" }
+                ].map((item, idx) => (
+                  <div key={idx} className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl border border-slate-100 hover:shadow-md transition-all">
+                    {item.icon}
+                    <span className="font-black text-xs uppercase tracking-wider">{item.text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-[#1A1A40] p-10 rounded-[3rem] text-white shadow-3xl relative">
+              <div className="absolute -top-6 -right-6 w-20 h-20 bg-yellow-400 rounded-2xl rotate-12 flex items-center justify-center shadow-xl">
+                <Star size={40} className="text-[#1A1A40] animate-pulse" />
+              </div>
+              <h4 className="text-2xl font-black mb-8 border-b border-white/10 pb-4">Layanan Terpadu Kami:</h4>
+              <ul className="space-y-6">
+                <li className="flex gap-4">
+                  <div className="mt-1"><Rocket size={20} className="text-indigo-400" /></div>
+                  <p className="text-sm leading-relaxed"><span className="font-bold text-indigo-300">Pendampingan Legalitas:</span> Perlindungan usaha secara menyeluruh dan bantuan sertifikasi produk.</p>
+                </li>
+                <li className="flex gap-4">
+                  <div className="mt-1"><Zap size={20} className="text-yellow-400" /></div>
+                  <p className="text-sm leading-relaxed"><span className="font-bold text-yellow-300">Produktivitas & Efisiensi:</span> Optimalisasi proses produksi melalui inovasi teknologi dan manajemen modern.</p>
+                </li>
+                <li className="flex gap-4">
+                  <div className="mt-1"><Award size={20} className="text-green-400" /></div>
+                  <p className="text-sm leading-relaxed"><span className="font-bold text-green-300">Penguatan Daya Saing:</span> Branding, desain kreatif, serta akses pasar digital hingga kancah internasional.</p>
+                </li>
+              </ul>
+              <div className="mt-10 p-4 bg-white/5 rounded-2xl border border-white/10">
+                <p className="text-xs italic text-slate-300 leading-relaxed">
+                  Didukung oleh tenaga ahli dan fasilitator berpengalaman untuk mendorong pelaku usaha menjadi lebih mandiri dan kompetitif.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* FORM PENDAFTARAN */}
       <section id="form-pendaftaran" className="py-24 px-6 bg-[#1A1A40]">
         <div className="max-w-4xl mx-auto bg-white rounded-[3rem] shadow-3xl overflow-hidden border-[12px] border-white/10">
           <div className="p-10 bg-slate-50 border-b text-center">
@@ -373,6 +441,9 @@ export default function IKMJuaraFullPage() {
 
       <style jsx global>{`
         html { scroll-behavior: smooth; }
+        #profil, #form-pendaftaran {
+          scroll-margin-top: 100px;
+        }
         @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
         .animate-float { animation: float 6s ease-in-out infinite; }
         .animate-bounce-slow { animation: bounce 3s infinite; }
