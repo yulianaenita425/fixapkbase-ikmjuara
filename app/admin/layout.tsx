@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { supabase } from '@/lib/supabaseClient'
+import { supabase } from '../../lib/supabaseClient'
 import Cookies from 'js-cookie'
 
 const menuItems = [
@@ -14,6 +14,7 @@ const menuItems = [
   { name: "Master Data IKM Juara", path: "/admin/data-layanan", icon: "📂" },
   { name: "Pelatihan Industri", path: "/admin/kegiatan-pelatihan", icon: "🎓" },
   { name: "Penelusuran", path: "/admin/penelusuran", icon: "🔎" },
+  { name: "Inputan Rencana Pelatihan", path: "/admin/rencana-pelatihan", icon: (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c1.097 0 2.148.155 3.127.442m9.75-15.958a8.967 8.967 0 01-6 2.292m0 14.25a8.967 8.967 0 01-6-2.292m6 2.292c1.097 0 2.148.155 3.127.442" /></svg>) },
   { name: "Recycle Bin", path: "/admin/recycle-bin", icon: "🗑️" },
 ]
 
