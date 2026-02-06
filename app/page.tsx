@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Lottie from "lottie-react";
-// --- PERBAIKAN: Mengubah 'lucide-center' menjadi 'lucide-react' ---
 import { 
   ShieldCheck, TrendingUp, Globe, Award, 
   MessageCircle, ArrowRight, User, Hash, 
@@ -12,7 +11,6 @@ import {
 import { supabase } from '../lib/supabaseClient'; 
 import { useNotification } from './hooks/useNotification';
 
-// Definisi Tipe untuk Pelatihan
 interface Pelatihan {
   nama: string;
   jadwal: string;
@@ -28,7 +26,6 @@ export default function IKMJuaraFullPage() {
   const [layanan, setLayanan] = useState("");
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   
-  // --- STATE DATA ---
   const [daftarPelatihan, setDaftarPelatihan] = useState<Pelatihan[]>([]);
   const [layananDetail, setLayananDetail] = useState<Pelatihan | null>(null);
   const [isLoadingPelatihan, setIsLoadingPelatihan] = useState(false);
@@ -36,7 +33,6 @@ export default function IKMJuaraFullPage() {
   const [loadingTamu, setLoadingTamu] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // --- FETCH DATA PELATIHAN ---
   useEffect(() => {
     const fetchPelatihan = async () => {
       setIsLoadingPelatihan(true);
@@ -44,7 +40,6 @@ export default function IKMJuaraFullPage() {
         const { data, error } = await supabase
           .from('kegiatan_2026') 
           .select('nama, jadwal, kuota, deskripsi')
-          // FILTER PUBLISHED TETAP ADA
           .eq('is_published', true); 
 
         if (error) throw error;
@@ -67,11 +62,44 @@ export default function IKMJuaraFullPage() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // --- FUNGSI TAMBAHAN: KIRIM EMAIL NOTIFIKASI ---
+  const sendEmailNotification = async (data: any) => {
+    try {
+      // GANTI 'YOUR_RESEND_API_KEY' dengan API Key dari resend.com
+      // GANTI 'email-admin@gmail.com' dengan email Anda
+      await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer re_FQme37xu_BPAfDvRmaYiz47oH7GshBqfi`, // Masukkan API Key Resend di sini
+        },
+        body: JSON.stringify({
+          from: 'Sistem IKM Juara <onboarding@resend.dev>',
+          to: ['email-admin-anda@gmail.com'], 
+          subject: `🚨 PENDAFTAR BARU: ${data.nama_usaha}`,
+          html: `
+            <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+              <h2 style="color: #1A1A40;">Ada Pendaftaran IKM Baru!</h2>
+              <p><strong>Nama Pemilik:</strong> ${data.nama_lengkap}</p>
+              <p><strong>Nama Usaha:</strong> ${data.nama_usaha}</p>
+              <p><strong>Produk:</strong> ${data.produk_utama}</p>
+              <p><strong>Layanan:</strong> ${data.layanan_prioritas}</p>
+              <p><strong>WhatsApp:</strong> ${data.no_hp}</p>
+              <hr />
+              <p style="font-size: 12px; color: #666;">Notifikasi otomatis Sistem IKM Juara v2.0</p>
+            </div>
+          `,
+        }),
+      });
+    } catch (err) {
+      console.error("Gagal mengirim notifikasi email:", err);
+    }
+  };
+
   const handlePendaftaran = async (formData: FormData) => {
     setIsSubmitting(true);
     const subPelatihanSelected = formData.get("sub_pelatihan") as string;
 
-    // CEK KUOTA SEBELUM INSERT TETAP ADA
     if (layanan === "Pelatihan Pemberdayaan IKM" && layananDetail && layananDetail.kuota <= 0) {
       alert("Maaf, kuota untuk pelatihan ini sudah habis.");
       setIsSubmitting(false);
@@ -93,6 +121,9 @@ export default function IKMJuaraFullPage() {
     try {
       const { error: insertError } = await supabase.from("ikm_register").insert([rawData]);
       if (insertError) throw insertError;
+
+      // --- PEMANGGILAN NOTIFIKASI EMAIL SETELAH BERHASIL INSERT ---
+      await sendEmailNotification(rawData);
 
       showNotification("PENDAFTARAN BERHASIL DISIMPAN!"); 
       setTimeout(() => { window.location.reload(); }, 2000);
