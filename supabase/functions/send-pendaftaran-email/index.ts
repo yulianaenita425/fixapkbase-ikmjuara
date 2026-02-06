@@ -25,7 +25,7 @@ serve(async (req: Request) => {
       },
       body: JSON.stringify({
         from: 'Sistem IKM Juara <onboarding@resend.dev>',
-        to: ['bagfas.ikmjuara@gmail.com'], // GANTI dengan email Anda
+        to: ['yulianaenita425@gmail.com'], // GANTI dengan email Anda
         subject: `🚨 PENDAFTAR BARU: ${nama_usaha}`,
         html: `
           <div style="font-family: sans-serif; padding: 20px;">
