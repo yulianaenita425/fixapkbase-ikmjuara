@@ -96,9 +96,10 @@ export default function IKMJuaraFullPage() {
     }
   };
 
-  const handlePendaftaran = async (formData: FormData) => {
+const handlePendaftaran = async (formData: FormData) => {
     setIsSubmitting(true);
     const subPelatihanSelected = formData.get("sub_pelatihan") as string;
+    const layananValue = formData.get("layanan") as string; // Tambahan: ambil value layanan
 
     if (layanan === "Pelatihan Pemberdayaan IKM" && layananDetail && layananDetail.kuota <= 0) {
       alert("Maaf, kuota untuk pelatihan ini sudah habis.");
@@ -106,6 +107,7 @@ export default function IKMJuaraFullPage() {
       return;
     }
 
+    // --- OPTIMALISASI RAW DATA ---
     const rawData = {
       nama_lengkap: formData.get("nama"),
       no_hp: formData.get("hp"),
@@ -114,13 +116,28 @@ export default function IKMJuaraFullPage() {
       nama_usaha: formData.get("nama_usaha"),
       produk_utama: formData.get("produk"),
       alamat_usaha: formData.get("alamat"),
-      layanan_prioritas: formData.get("layanan"),
+      layanan_prioritas: layananValue, // Sesuai dengan kolom di Supabase Anda
+      // Tambahkan baris di bawah ini sebagai pengaman jika ada trigger database yang mencari 'jenis_layanan'
+      jenis_layanan: layananValue, 
       sub_pelatihan: subPelatihanSelected || null,
     };
 
     try {
+      // Kita coba insert. Jika Supabase menolak karena field 'jenis_layanan' tidak ada di table, 
+      // kita lakukan fallback otomatis hanya mengirim 'layanan_prioritas'.
       const { error: insertError } = await supabase.from("ikm_register").insert([rawData]);
-      if (insertError) throw insertError;
+      
+      if (insertError) {
+        // Fallback: Jika error karena kolom 'jenis_layanan' benar-benar tidak ada di skema table
+        if (insertError.message.includes("jenis_layanan")) {
+           const fallbackData = { ...rawData };
+           delete (fallbackData as any).jenis_layanan;
+           const { error: retryError } = await supabase.from("ikm_register").insert([fallbackData]);
+           if (retryError) throw retryError;
+        } else {
+           throw insertError;
+        }
+      }
 
       // --- PEMANGGILAN NOTIFIKASI EMAIL SETELAH BERHASIL INSERT ---
       await sendEmailNotification(rawData);
@@ -128,7 +145,7 @@ export default function IKMJuaraFullPage() {
       showNotification("PENDAFTARAN BERHASIL DISIMPAN!"); 
       setTimeout(() => { window.location.reload(); }, 2000);
     } catch (error: any) {
-      console.error(error);
+      console.error("Full Error Debug:", error);
       alert("Gagal menyimpan: " + (error.message || "Terjadi kesalahan koneksi"));
     } finally {
       setIsSubmitting(false);
