@@ -10,3 +10,29 @@ const finalUrl = supabaseUrl.startsWith('http') ? supabaseUrl : 'https://placeho
 const finalKey = supabaseAnonKey || 'placeholder-key';
 
 export const supabase = createClient(finalUrl, finalKey);
+
+// Tambahkan tipe data untuk parameter agar lebih aman (optional)
+export type LogAction = 'input' | 'edit' | 'hapus' | 'pencarian' | 'view' | 'login';
+
+export const saveLog = async (description: string, action_type: LogAction) => {
+  try {
+    // Ambil user yang sedang login secara otomatis dari Supabase Auth
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    // Ambil role dari metadata atau table profile jika ada
+    const username = user?.user_metadata?.username || user?.email || 'Anonim';
+    const role = user?.user_metadata?.role || 'user';
+
+    await supabase.from("activity_logs").insert([
+      {
+        username,
+        role,
+        description,
+        action_type,
+        created_at: new Date().toISOString(),
+      },
+    ]);
+  } catch (err) {
+    console.error("Gagal save log:", err);
+  }
+};

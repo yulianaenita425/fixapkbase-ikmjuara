@@ -27,4 +27,12 @@ export default function RootLayout({
       </body>
     </html>
   );
+
+  
+useEffect(() => {
+  if (user) {
+    saveLog(user.username, user.role, `Membuka halaman ${window.location.pathname}`, 'view');
+  }
+}, [pathname]); // Akan berjalan setiap kali URL berubah
+
 }
