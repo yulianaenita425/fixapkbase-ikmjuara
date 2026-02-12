@@ -106,10 +106,17 @@ export default function LoginPage() {
       setLoading(false);
     } else if (data?.session) {
       // --- REKAM AKTIVITAS DI SINI ---
-      // Kita asumsikan role default adalah 'admin' atau 'user' sesuai kebutuhan sistem Anda
       const userEmail = data.session.user.email || 'Unknown';
-      await saveLog(userEmail, 'admin', `Admin ${userEmail} berhasil login ke dashboard`, 'pencarian');
-      await saveLog(userEmail, 'user', `User ${userEmail} berhasil login`, 'pencarian'); router.push('/admin');
+      
+      // PENAMBAHAN LOGIKA FILTER ROLE:
+      // Memeriksa apakah email mengandung domain admin
+      if (userEmail.toLowerCase().includes('@madiun.go.id') || userEmail.toLowerCase().includes('@ikmjuara.id')) {
+        // Jika admin, hanya simpan log admin
+        await saveLog(userEmail, 'admin', `Admin ${userEmail} berhasil login ke dashboard`, 'pencarian');
+      } else {
+        // Jika bukan admin (user umum), simpan sebagai user
+        await saveLog(userEmail, 'user', `User ${userEmail} berhasil login`, 'pencarian'); 
+      }
       // -------------------------------
 
       // SIMPAN ACCESS TOKEN KE COOKIE
@@ -119,7 +126,7 @@ export default function LoginPage() {
         sameSite: 'lax'
       });
 
-      // Redirect ke halaman admin
+      // Redirect ke halaman admin setelah log selesai
       router.push('/admin');
     }
   };
