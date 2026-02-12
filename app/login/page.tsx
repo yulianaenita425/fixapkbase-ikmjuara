@@ -13,6 +13,22 @@ export default function LoginPage() {
   const router = useRouter();
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
+  // --- TAMBAHAN FUNGSI LOGGER ---
+  const saveLog = async (username: string, role: string, description: string, actionType: string) => {
+    await supabase
+      .from("activity_logs")
+      .insert([
+        { 
+          username, 
+          role, 
+          description, 
+          action_type: actionType, 
+          created_at: new Date().toISOString() 
+        }
+      ]);
+  };
+  // ------------------------------
+
   // Efek Partikel Digital Neural Network
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -89,8 +105,13 @@ export default function LoginPage() {
       alert('Akses Ditolak: ' + error.message);
       setLoading(false);
     } else if (data?.session) {
+      // --- REKAM AKTIVITAS DI SINI ---
+      // Kita asumsikan role default adalah 'admin' atau 'user' sesuai kebutuhan sistem Anda
+      const userEmail = data.session.user.email || 'Unknown';
+      await saveLog(userEmail, 'admin', `Admin ${userEmail} berhasil login ke dashboard`, 'pencarian');
+      // -------------------------------
+
       // SIMPAN ACCESS TOKEN KE COOKIE
-      // Nama 'sb-access-token' ini harus sama dengan yang ada di middleware.ts nanti
       Cookies.set('sb-access-token', data.session.access_token, { 
         expires: 1, // Token hangus dalam 1 hari
         path: '/',
