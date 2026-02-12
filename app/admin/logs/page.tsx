@@ -36,7 +36,27 @@ export default function ActivityLogs() {
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
 
-  useEffect(() => { fetchLogs() }, [])
+  // --- TAMBAHAN: REALTIME SUBSCRIPTION ---
+  useEffect(() => {
+    fetchLogs();
+
+    // Subscribe ke perubahan tabel activity_logs secara realtime
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'activity_logs' },
+        (payload) => {
+          setLogs((prevLogs) => [payload.new, ...prevLogs]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+  // ---------------------------------------
 
   const fetchLogs = async () => {
     setLoading(true)
@@ -60,15 +80,17 @@ export default function ActivityLogs() {
       const dayLogs = logs.filter(l => l.created_at.startsWith(day))
       return {
         tanggal: new Date(day).toLocaleDateString('id-ID', { weekday: 'short' }),
-        Admin: dayLogs.filter(l => l.role === 'admin').length,
-        User: dayLogs.filter(l => l.role === 'user').length,
+        // Normalisasi role ke lowercase agar filter akurat
+        Admin: dayLogs.filter(l => l.role?.toLowerCase() === 'admin').length,
+        User: dayLogs.filter(l => l.role?.toLowerCase() === 'user').length,
       }
     })
   }, [logs])
 
   const filteredLogs = logs.filter(log => {
     const logDate = new Date(log.created_at).toISOString().split('T')[0]
-    const matchRole = roleFilter === "all" || log.role === roleFilter
+    // Normalisasi role di filter juga
+    const matchRole = roleFilter === "all" || log.role?.toLowerCase() === roleFilter.toLowerCase()
     const matchStart = startDate === "" || logDate >= startDate
     const matchEnd = endDate === "" || logDate <= endDate
     return matchRole && matchStart && matchEnd
@@ -122,8 +144,8 @@ export default function ActivityLogs() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
           <div className="lg:col-span-1 space-y-6">
             <StatCard title="Total Aktivitas" count={logs.length} icon={ArrowRightLeft} color="bg-indigo-500" />
-            <StatCard title="Aksi Admin" count={logs.filter(l => l.role === 'admin').length} icon={ShieldCheck} color="bg-rose-500" />
-            <StatCard title="Interaksi User" count={logs.filter(l => l.role === 'user').length} icon={User} color="bg-emerald-500" />
+            <StatCard title="Aksi Admin" count={logs.filter(l => l.role?.toLowerCase() === 'admin').length} icon={ShieldCheck} color="bg-rose-500" />
+            <StatCard title="Interaksi User" count={logs.filter(l => l.role?.toLowerCase() === 'user').length} icon={User} color="bg-emerald-500" />
           </div>
           
           <div className="lg:col-span-2 bg-white p-8 rounded-[40px] shadow-sm border border-slate-100">
@@ -214,8 +236,8 @@ export default function ActivityLogs() {
                     <td className="p-6 text-sm font-bold text-slate-300">{(index + 1).toString().padStart(2, '0')}</td>
                     <td className="p-6">
                       <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-[9px] ${log.role === 'admin' ? 'bg-rose-100 text-rose-600 border border-rose-200' : 'bg-emerald-100 text-emerald-600 border border-emerald-200'}`}>
-                          {log.role === 'admin' ? 'ADM' : 'USR'}
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-[9px] ${log.role?.toLowerCase() === 'admin' ? 'bg-rose-100 text-rose-600 border border-rose-200' : 'bg-emerald-100 text-emerald-600 border border-emerald-200'}`}>
+                          {log.role?.toLowerCase() === 'admin' ? 'ADM' : 'USR'}
                         </div>
                         <span className="text-sm font-black text-slate-700 uppercase">{log.username || 'Anonim'}</span>
                       </div>

@@ -109,6 +109,7 @@ export default function LoginPage() {
       // Kita asumsikan role default adalah 'admin' atau 'user' sesuai kebutuhan sistem Anda
       const userEmail = data.session.user.email || 'Unknown';
       await saveLog(userEmail, 'admin', `Admin ${userEmail} berhasil login ke dashboard`, 'pencarian');
+      await saveLog(userEmail, 'user', `User ${userEmail} login`, 'pencarian');
       // -------------------------------
 
       // SIMPAN ACCESS TOKEN KE COOKIE
