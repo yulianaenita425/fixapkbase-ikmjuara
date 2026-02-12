@@ -80,17 +80,28 @@ export default function ActivityLogs() {
       const dayLogs = logs.filter(l => l.created_at.startsWith(day))
       return {
         tanggal: new Date(day).toLocaleDateString('id-ID', { weekday: 'short' }),
-        // Normalisasi role ke lowercase agar filter akurat
-        Admin: dayLogs.filter(l => l.role?.toLowerCase() === 'admin').length,
-        User: dayLogs.filter(l => l.role?.toLowerCase() === 'user').length,
+        // Normalisasi role ke lowercase dan menggunakan includes agar user/public terhitung
+        Admin: dayLogs.filter(l => l.role?.toLowerCase().includes('admin')).length,
+        User: dayLogs.filter(l => l.role?.toLowerCase().includes('user')).length,
       }
     })
   }, [logs])
 
   const filteredLogs = logs.filter(log => {
     const logDate = new Date(log.created_at).toISOString().split('T')[0]
-    // Normalisasi role di filter juga
-    const matchRole = roleFilter === "all" || log.role?.toLowerCase() === roleFilter.toLowerCase()
+    
+    // --- PENAMBAHAN LOGIKA FILTER ROLE ---
+    const roleLower = log.role?.toLowerCase() || '';
+    const isUser = roleLower.includes('user');
+    const isAdmin = roleLower.includes('admin');
+
+    let matchRole = roleFilter === "all" || log.role?.toLowerCase() === roleFilter.toLowerCase()
+    
+    // Penyesuaian agar filter tombol 'user' mencakup 'user/public'
+    if (roleFilter === "user") matchRole = isUser;
+    if (roleFilter === "admin") matchRole = isAdmin;
+    // -------------------------------------
+
     const matchStart = startDate === "" || logDate >= startDate
     const matchEnd = endDate === "" || logDate <= endDate
     return matchRole && matchStart && matchEnd
@@ -144,8 +155,8 @@ export default function ActivityLogs() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
           <div className="lg:col-span-1 space-y-6">
             <StatCard title="Total Aktivitas" count={logs.length} icon={ArrowRightLeft} color="bg-indigo-500" />
-            <StatCard title="Aksi Admin" count={logs.filter(l => l.role?.toLowerCase() === 'admin').length} icon={ShieldCheck} color="bg-rose-500" />
-            <StatCard title="Aksi User" count={logs.filter(l => l.role?.toLowerCase() === 'user').length} icon={User} color="bg-emerald-500" />
+            <StatCard title="Aksi Admin" count={logs.filter(l => l.role?.toLowerCase().includes('admin')).length} icon={ShieldCheck} color="bg-rose-500" />
+            <StatCard title="Aksi User" count={logs.filter(l => l.role?.toLowerCase().includes('user')).length} icon={User} color="bg-emerald-500" />
           </div>
           
           <div className="lg:col-span-2 bg-white p-8 rounded-[40px] shadow-sm border border-slate-100">
@@ -236,8 +247,8 @@ export default function ActivityLogs() {
                     <td className="p-6 text-sm font-bold text-slate-300">{(index + 1).toString().padStart(2, '0')}</td>
                     <td className="p-6">
                       <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-[9px] ${log.role?.toLowerCase() === 'admin' ? 'bg-rose-100 text-rose-600 border border-rose-200' : 'bg-emerald-100 text-emerald-600 border border-emerald-200'}`}>
-                          {log.role?.toLowerCase() === 'admin' ? 'ADM' : 'USR'}
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-[9px] ${log.role?.toLowerCase().includes('admin') ? 'bg-rose-100 text-rose-600 border border-rose-200' : 'bg-emerald-100 text-emerald-600 border border-emerald-200'}`}>
+                          {log.role?.toLowerCase().includes('admin') ? 'ADM' : 'USR'}
                         </div>
                         <span className="text-sm font-black text-slate-700 uppercase">{log.username || 'Anonim'}</span>
                       </div>
