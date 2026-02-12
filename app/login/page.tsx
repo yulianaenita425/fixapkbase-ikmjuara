@@ -19,15 +19,53 @@ export default function LoginPage() {
       .from("activity_logs")
       .insert([
         { 
-          username, 
-          role, 
-          description, 
+          // PENAMBAHAN LOGIKA FALLBACK ANONIM
+          username: username || 'ANONIM', 
+          role: role, 
+          description: description, 
           action_type: actionType, 
           created_at: new Date().toISOString() 
         }
       ]);
   };
   // ------------------------------
+
+  // --- TAMBAHAN LOGIKA BUKU TAMU & PENCARIAN (SESUAI PERMINTAAN) ---
+  const [namaInput, setNamaInput] = useState(''); // State untuk menampung nama buku tamu
+  const [inputNamaPencari, setInputNamaPencari] = useState(''); // State untuk nama pencari
+  const [queryPencarian, setQueryPencarian] = useState(''); // State untuk keyword cari
+
+  const handleBukuTamu = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Asumsikan 'namaInput' adalah state dari input nama di form Anda
+    const namaPelaku = namaInput; 
+
+    // Simpan data ke tabel buku_tamu (logika Anda yang sudah ada)
+    // ...
+
+    // REKAM KE LOG AKTIVITAS
+    await saveLog(
+      namaPelaku, 
+      'user', 
+      `${namaPelaku} mengisi buku tamu`, 
+      'input'
+    );
+  };
+
+  const handleSearch = async () => {
+    // Ambil nama dari session atau input field nama sebelum cari
+    const namaPelaku = inputNamaPencari; 
+
+    // REKAM KE LOG AKTIVITAS
+    await saveLog(
+      namaPelaku, 
+      'user', 
+      `Pencarian BERHASIL untuk: ${queryPencarian}`, 
+      'pencarian'
+    );
+  };
+  // ----------------------------------------------------------------
 
   // Efek Partikel Digital Neural Network
   useEffect(() => {
