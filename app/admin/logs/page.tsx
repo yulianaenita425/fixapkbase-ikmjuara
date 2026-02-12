@@ -145,7 +145,7 @@ export default function ActivityLogs() {
           <div className="lg:col-span-1 space-y-6">
             <StatCard title="Total Aktivitas" count={logs.length} icon={ArrowRightLeft} color="bg-indigo-500" />
             <StatCard title="Aksi Admin" count={logs.filter(l => l.role?.toLowerCase() === 'admin').length} icon={ShieldCheck} color="bg-rose-500" />
-            <StatCard title="Interaksi User" count={logs.filter(l => l.role?.toLowerCase() === 'user').length} icon={User} color="bg-emerald-500" />
+            <StatCard title="Aksi User" count={logs.filter(l => l.role?.toLowerCase() === 'user').length} icon={User} color="bg-emerald-500" />
           </div>
           
           <div className="lg:col-span-2 bg-white p-8 rounded-[40px] shadow-sm border border-slate-100">
