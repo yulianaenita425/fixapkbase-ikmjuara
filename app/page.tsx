@@ -410,36 +410,51 @@ export default function IKMJuaraFullPage() {
         </div>
       </section>
 
-      {/* MODAL BUKU TAMU */}
-      {showModal && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-[#1A1A40]/40 backdrop-blur-md">
-          <div className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-3xl p-10 relative animate-scaleIn">
-            <button onClick={() => setShowModal(false)} className="absolute top-6 right-8 text-slate-400 hover:text-[#1A1A40] font-black text-2xl">×</button>
-            <div className="text-center mb-8">
-              <h3 className="text-3xl font-black italic uppercase tracking-tighter">Buku Tamu</h3>
-              <p className="text-slate-500 text-sm font-bold mt-2">Identitas Pengakses Sistem IKM JUARA</p>
-            </div>
-            <form onSubmit={async (e) => {
-                e.preventDefault();
-                setLoadingTamu(true);
-                const target = e.target as any;
-                const dataTamu = {
-                  nama: target.nama.value,
-                  whatsapp: target.whatsapp.value,
-                  alamat: target.alamat.value,
-                  waktu_kunjungan: new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })
-                };
-                try {
-                  const { error } = await supabase.from("buku_tamu").insert([dataTamu]);
-                  if (error) throw error;
-                  showNotification("AKSES DATA DIBERIKAN!");
-                  setTimeout(() => { window.location.href = '/pencarian'; }, 1500);
-                } catch (err) {
-                  window.location.href = '/pencarian';
-                } finally {
-                  setLoadingTamu(false);
-                }
-              }} className="space-y-4">
+{/* MODAL BUKU TAMU */}
+{showModal && (
+  <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-[#1A1A40]/40 backdrop-blur-md">
+    <div className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-3xl p-10 relative animate-scaleIn">
+      <button onClick={() => setShowModal(false)} className="absolute top-6 right-8 text-slate-400 hover:text-[#1A1A40] font-black text-2xl">×</button>
+      <div className="text-center mb-8">
+        <h3 className="text-3xl font-black italic uppercase tracking-tighter">Buku Tamu</h3>
+        <p className="text-slate-500 text-sm font-bold mt-2">Identitas Pengakses Sistem IKM JUARA</p>
+      </div>
+      <form onSubmit={async (e) => {
+          e.preventDefault();
+          setLoadingTamu(true);
+          const target = e.target as any;
+          const namaTamu = target.nama.value; // Ambil nama untuk disimpan
+          const dataTamu = {
+            nama: namaTamu,
+            whatsapp: target.whatsapp.value,
+            alamat: target.alamat.value,
+            waktu_kunjungan: new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })
+          };
+
+          try {
+            // 1. Simpan ke tabel buku_tamu
+            const { error } = await supabase.from("buku_tamu").insert([dataTamu]);
+            
+            // 2. Tambahan: Catat ke activity_logs agar nama terekam sebagai 'username'
+            await supabase.from("activity_logs").insert([{
+              role: "user",
+              username: namaTamu, // Nama pengakses masuk ke kolom username
+              action_type: "pencarian",
+              description: `Pencarian BERHASIL oleh ${namaTamu}`
+            }]);
+
+            // 3. Simpan di local storage agar halaman /pencarian bisa mengenali user ini
+            localStorage.setItem("user_name_ikm", namaTamu);
+
+            if (error) throw error;
+            showNotification("AKSES DATA DIBERIKAN!");
+            setTimeout(() => { window.location.href = '/pencarian'; }, 1500);
+          } catch (err) {
+            window.location.href = '/pencarian';
+          } finally {
+            setLoadingTamu(false);
+          }
+        }} className="space-y-4">
               <div className="space-y-1">
                 <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Nama Pengunjung</label>
                 <input name="nama" required type="text" placeholder="Nama Lengkap" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold shadow-inner focus:border-indigo-500 border-2 border-transparent transition-all" />

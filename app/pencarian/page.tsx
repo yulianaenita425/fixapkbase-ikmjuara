@@ -32,6 +32,10 @@ export default function PenelusuranIKM() {
     setPelatihan([])
     setShowNotFound(false)
 
+    // --- TAMBAHAN: AMBIL NAMA DARI BUKU TAMU ---
+    const savedName = typeof window !== 'undefined' ? localStorage.getItem("user_name_ikm") : null;
+    const currentUsername = savedName || 'ANONIM';
+
     try {
       const cleanQuery = searchQuery.trim();
       const { data: dataIKM, error: errIKM } = await supabase
@@ -46,6 +50,7 @@ export default function PenelusuranIKM() {
       if (!dataIKM) {
         await supabase.from("activity_logs").insert([{
           role: 'user/public',
+          username: currentUsername, // Menggunakan nama dari Buku Tamu
           action_type: 'pencarian',
           description: `Pencarian GAGAL untuk NIB/NIK/Nama: ${cleanQuery}`,
         }]);
@@ -58,6 +63,7 @@ export default function PenelusuranIKM() {
       // --- LOGIKA PENCATATAN LOG PENCARIAN BERHASIL ---
       await supabase.from("activity_logs").insert([{
         role: 'user/public',
+        username: currentUsername, // Menggunakan nama dari Buku Tamu
         action_type: 'pencarian',
         description: `Pencarian BERHASIL untuk: ${dataIKM.nama_lengkap} (NIB: ${dataIKM.no_nib})`,
       }]);
