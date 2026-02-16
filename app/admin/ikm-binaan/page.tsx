@@ -11,6 +11,19 @@ export default function IKMPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const rowsPerPage = 5
 
+  // State untuk Modal Import Custom
+  const [importSummary, setImportSummary] = useState<{
+    show: boolean;
+    dataBaru: any[];
+    dataDuplikat: any[];
+    isLoading: boolean;
+  }>({
+    show: false,
+    dataBaru: [],
+    dataDuplikat: [],
+    isLoading: false
+  });
+
   const [form, setForm] = useState({
     no_nib: "",
     nik: "",
@@ -34,8 +47,6 @@ export default function IKMPage() {
 
     if (!error) {
       setData(res || []);
-    } else {
-      console.error("Fetch error:", error.message);
     }
   }, [activeTab]);
 
@@ -81,82 +92,34 @@ export default function IKMPage() {
       await saveLog(`Menambah data IKM: ${form.nama_usaha}`, "input");
       setForm({ no_nib: "", nik: "", nama_lengkap: "", nama_usaha: "", alamat: "", no_hp: "" });
       fetchData();
-    } else {
-      alert("Gagal: " + error.message);
     }
   };
 
   const handleSoftDelete = async (id: string, nama: string) => {
     if (!confirm(`Pindahkan ${nama} ke Recycle Bin?`)) return;
-    
-    const { error } = await supabase
-      .from("ikm_binaan")
-      .update({ 
-        is_deleted: true, 
-        deleted_at: new Date().toISOString() 
-      })
-      .eq("id", id);
-
-    if (!error) {
-      alert("Data dipindah ke Sampah 🗑️");
-      await saveLog(`Memindahkan ${nama} ke sampah`, "hapus");
-      fetchData();
-    } else {
-      alert("Error: " + error.message);
-    }
+    const { error } = await supabase.from("ikm_binaan").update({ is_deleted: true, deleted_at: new Date().toISOString() }).eq("id", id);
+    if (!error) { fetchData(); await saveLog(`Memindahkan ${nama} ke sampah`, "hapus"); }
   };
 
   const handleRestore = async (id: string, nama: string) => {
-    const { error } = await supabase
-      .from("ikm_binaan")
-      .update({ is_deleted: false, deleted_at: null })
-      .eq("id", id)
-
-    if (!error) {
-      alert("Data dipulihkan ✅");
-      await saveLog(`Memulihkan data IKM: ${nama}`, "edit");
-      fetchData();
-    }
+    const { error } = await supabase.from("ikm_binaan").update({ is_deleted: false, deleted_at: null }).eq("id", id);
+    if (!error) { fetchData(); await saveLog(`Memulihkan data IKM: ${nama}`, "edit"); }
   };
 
   const handlePermanentDelete = async (id: string, nama: string) => {
-    if (!confirm("Hapus permanen? Data ini tidak bisa dikembalikan!")) return
+    if (!confirm("Hapus permanen?")) return
     const { error } = await supabase.from("ikm_binaan").delete().eq("id", id)
-    if (!error) {
-      alert("Data dihapus selamanya 💀");
-      await saveLog(`Menghapus permanen IKM: ${nama}`, "hapus");
-      fetchData();
-    }
+    if (!error) { fetchData(); await saveLog(`Menghapus permanen IKM: ${nama}`, "hapus"); }
   };
 
   const handleUpdate = async () => {
     if (!editData) return
-    
-    const payload = {
-      no_nib: editData.no_nib,
-      nik: editData.nik,
-      nama_lengkap: editData.nama_lengkap,
-      nama_usaha: editData.nama_usaha,
-      alamat: editData.alamat,
-      no_hp: editData.no_hp
-    }
+    const payload = { no_nib: editData.no_nib, nik: editData.nik, nama_lengkap: editData.nama_lengkap, nama_usaha: editData.nama_usaha, alamat: editData.alamat, no_hp: editData.no_hp }
+    const { error } = await supabase.from("ikm_binaan").update(payload).eq("id", editData.id)
+    if (!error) { setEditData(null); fetchData(); await saveLog(`Update data IKM: ${editData.nama_usaha}`, "edit"); }
+  };
 
-    const { error } = await supabase
-      .from("ikm_binaan")
-      .update(payload)
-      .eq("id", editData.id)
-
-    if (!error) {
-      alert("Data diperbarui! ✅")
-      await saveLog(`Update data IKM: ${editData.nama_usaha}`, "edit");
-      setEditData(null)
-      fetchData() 
-    } else {
-      alert("Gagal update: " + error.message)
-    }
-  }
-
-  // ================= EXCEL LOGIC =================
+  // ================= EXCEL LOGIC (MODERNIZED) =================
   const downloadTemplate = () => {
     const template = [{ no_nib: "", nik: "", nama_lengkap: "", nama_usaha: "", alamat: "", no_hp: "" }];
     const worksheet = XLSX.utils.json_to_sheet(template);
@@ -165,7 +128,7 @@ export default function IKMPage() {
     XLSX.writeFile(workbook, "template_import_ikm.xlsx");
   };
 
-  const importExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const processImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
     const reader = new FileReader()
@@ -176,7 +139,6 @@ export default function IKMPage() {
         const worksheet = workbook.Sheets[workbook.SheetNames[0]]
         const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet)
         
-        // 1. Bersihkan data dari Excel
         const allDataFromExcel = jsonData.map(item => ({
             no_nib: String(item.no_nib || "").replace(/[^0-9]/g, ""),
             nik: String(item.nik || "").replace(/[^0-9]/g, ""),
@@ -188,74 +150,117 @@ export default function IKMPage() {
             created_at: new Date().toISOString()
         }));
 
-        // 2. Ambil data NIB yang sudah ada di Database (untuk perbandingan)
-        const { data: existingRecords } = await supabase
-          .from("ikm_binaan")
-          .select("no_nib")
-          .eq("is_deleted", false);
-
+        const { data: existingRecords } = await supabase.from("ikm_binaan").select("no_nib").eq("is_deleted", false);
         const existingNibs = new Set(existingRecords?.map(r => r.no_nib) || []);
 
-        // 3. Filter data: Pisahkan antara yang baru dan yang duplikat
         const dataBaru = allDataFromExcel.filter(item => !existingNibs.has(item.no_nib));
         const dataDuplikat = allDataFromExcel.filter(item => existingNibs.has(item.no_nib));
 
-        // 4. Logika Konfirmasi
-        if (dataBaru.length === 0) {
-          alert(`Gagal Import: Semua data (${dataDuplikat.length} baris) sudah terdaftar di database.`);
-          return;
-        }
+        // Tampilkan Modal Custom alih-alih window.confirm
+        setImportSummary({
+          show: true,
+          dataBaru,
+          dataDuplikat,
+          isLoading: false
+        });
 
-        const pesanKonfirmasi = dataDuplikat.length > 0 
-          ? `Ditemukan ${dataBaru.length} data baru dan ${dataDuplikat.length} data duplikat.\n\nSistem hanya akan menyimpan ${dataBaru.length} data baru. Lanjutkan?`
-          : `Siap mengimport ${dataBaru.length} data baru. Lanjutkan?`;
-
-        if (confirm(pesanKonfirmasi)) {
-          const { error } = await supabase.from("ikm_binaan").insert(dataBaru)
-          if (!error) { 
-              alert(`Berhasil! 🚀\n${dataBaru.length} data baru telah disimpan.\n${dataDuplikat.length} data duplikat diabaikan.`); 
-              await saveLog(`Import ${dataBaru.length} data baru via Excel (Abaikan ${dataDuplikat.length} duplikat)`, "input");
-              fetchData(); 
-          } else {
-              alert("Database menolak data: " + error.message);
-          }
-        }
-      } catch (err) { alert("Format file tidak didukung atau terjadi kesalahan pembacaan."); }
+      } catch (err) { alert("Format file tidak didukung."); }
     }
     reader.readAsBinaryString(file)
-    // Reset input file agar bisa pilih file yang sama lagi jika perlu
     e.target.value = "";
   }
 
+  const executeImport = async () => {
+    setImportSummary(prev => ({ ...prev, isLoading: true }));
+    const { error } = await supabase.from("ikm_binaan").insert(importSummary.dataBaru);
+    
+    if (!error) {
+      await saveLog(`Import ${importSummary.dataBaru.length} data via Excel`, "input");
+      setImportSummary({ show: false, dataBaru: [], dataDuplikat: [], isLoading: false });
+      fetchData();
+      alert("Import Berhasil! 🚀");
+    } else {
+      alert("Gagal menyimpan: " + error.message);
+      setImportSummary(prev => ({ ...prev, isLoading: false }));
+    }
+  }
+
   const exportExcel = () => {
-    const dataToExport = filteredData.map((item, index) => ({
-      No: index + 1,
-      NIB: item.no_nib,
-      NIK: item.nik,
-      Nama: item.nama_lengkap,
-      Usaha: item.nama_usaha,
-      Alamat: item.alamat,
-      WhatsApp: item.no_hp
-    }));
-
-    if (dataToExport.length === 0) return alert("Tidak ada data");
-
+    const dataToExport = filteredData.map((item, index) => ({ No: index + 1, NIB: item.no_nib, NIK: item.nik, Nama: item.nama_lengkap, Usaha: item.nama_usaha, Alamat: item.alamat, WhatsApp: item.no_hp }));
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Data IKM");
-    XLSX.writeFile(workbook, `Data_IKM_Binaan_${new Date().toLocaleDateString()}.xlsx`);
+    XLSX.writeFile(workbook, `Data_IKM_${new Date().toLocaleDateString()}.xlsx`);
   };
 
   // ================= SEARCH & PAGINATION =================
   const filteredData = data.filter((item) =>
-    [item.nama_lengkap, item.nama_usaha, item.no_nib, item.alamat]
-      .some(val => String(val || "").toLowerCase().includes(search.toLowerCase()))
+    [item.nama_lengkap, item.nama_usaha, item.no_nib, item.alamat].some(val => String(val || "").toLowerCase().includes(search.toLowerCase()))
   )
   const totalPages = Math.ceil(filteredData.length / rowsPerPage)
   const paginatedData = filteredData.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)
 
   return (
-    <div className="p-8 bg-gray-50 min-h-screen text-black">
+    <div className="p-8 bg-gray-50 min-h-screen text-black font-sans">
+      
+      {/* MODAL IMPORT ATRAKTIF */}
+      {importSummary.show && (
+        <div className="fixed inset-0 bg-blue-950/60 backdrop-blur-md flex justify-center items-center z-[60] p-4">
+          <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden border border-white/20 animate-in fade-in zoom-in duration-300">
+            <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-8 text-white text-center">
+              <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur-sm">
+                <span className="text-4xl">📥</span>
+              </div>
+              <h2 className="text-2xl font-black">Konfirmasi Import Data</h2>
+              <p className="text-blue-100 text-sm mt-1">Sistem mendeteksi ringkasan data sebagai berikut:</p>
+            </div>
+            
+            <div className="p-8">
+              <div className="grid grid-cols-2 gap-4 mb-8">
+                <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-3xl text-center">
+                  <p className="text-[10px] font-black text-emerald-600 uppercase tracking-wider mb-1">Data Baru</p>
+                  <p className="text-3xl font-black text-emerald-700">{importSummary.dataBaru.length}</p>
+                  <p className="text-[10px] text-emerald-500 mt-1">Akan Ditambahkan</p>
+                </div>
+                <div className="bg-amber-50 border border-amber-100 p-4 rounded-3xl text-center">
+                  <p className="text-[10px] font-black text-amber-600 uppercase tracking-wider mb-1">Data Ganda</p>
+                  <p className="text-3xl font-black text-amber-700">{importSummary.dataDuplikat.length}</p>
+                  <p className="text-[10px] text-amber-500 mt-1">Akan Diabaikan</p>
+                </div>
+              </div>
+
+              {importSummary.dataBaru.length === 0 ? (
+                <div className="bg-red-50 text-red-600 p-4 rounded-2xl text-sm font-medium text-center border border-red-100">
+                  ⚠️ Tidak ada data baru yang bisa diimport.
+                </div>
+              ) : (
+                <p className="text-center text-gray-500 text-sm mb-6 leading-relaxed">
+                  Apakah Anda yakin ingin memasukkan <b>{importSummary.dataBaru.length} data</b> ini ke dalam database utama?
+                </p>
+              )}
+
+              <div className="flex gap-3 mt-4">
+                <button 
+                  onClick={() => setImportSummary({ ...importSummary, show: false })}
+                  className="flex-1 py-4 bg-gray-100 text-gray-500 rounded-2xl font-bold hover:bg-gray-200 transition-all"
+                >
+                  Batal
+                </button>
+                {importSummary.dataBaru.length > 0 && (
+                  <button 
+                    onClick={executeImport}
+                    disabled={importSummary.isLoading}
+                    className="flex-2 px-8 py-4 bg-blue-600 text-white rounded-2xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 active:scale-95 transition-all disabled:opacity-50"
+                  >
+                    {importSummary.isLoading ? "Memproses..." : "Ya, Simpan Data"}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-extrabold text-blue-800 flex items-center gap-2">
@@ -312,7 +317,7 @@ export default function IKMPage() {
             <>
               <button onClick={downloadTemplate} className="bg-blue-100 text-blue-700 px-4 py-2.5 rounded-xl font-bold border border-blue-200 hover:bg-blue-200 text-sm transition-all">📄 Template</button>
               <label className="bg-orange-500 hover:bg-orange-600 text-white px-5 py-2.5 rounded-xl cursor-pointer font-bold flex items-center gap-2 shadow-md transition-all text-sm">
-                ⬆ Import <input type="file" accept=".xlsx, .xls" onChange={importExcel} className="hidden" />
+                ⬆ Import <input type="file" accept=".xlsx, .xls" onChange={processImportFile} className="hidden" />
               </label>
               <button onClick={exportExcel} className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-bold shadow-md transition-all text-sm">⬇ Export Excel</button>
             </>
