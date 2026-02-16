@@ -120,10 +120,30 @@ export default function AdminPelatihanPage() {
     fetchData(); 
   };
 
-  const handleHapusPendaftar = async (id: string) => {
+const handleHapusPendaftar = async (id: string) => {
     if (confirm("Hapus data pendaftaran ini?")) {
-      const { error } = await supabase.from('list_tunggu_peserta').delete().eq('id', id);
-      if (!error) fetchData();
+      setLoading(true); // Aktifkan loading agar user tahu proses berjalan
+      try {
+        const { error } = await supabase
+          .from('list_tunggu_peserta')
+          .delete()
+          .eq('id', id);
+
+        if (error) {
+          // Jika error 400/403, biasanya masalah RLS atau ID tidak ditemukan
+          throw new Error(error.message);
+        }
+
+        // Jika berhasil, panggil fetchData untuk update UI
+        await fetchData();
+        alert("Data pendaftaran berhasil dihapus.");
+        
+      } catch (error: any) {
+        console.error("Gagal menghapus:", error);
+        alert("Gagal menghapus: " + error.message);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
