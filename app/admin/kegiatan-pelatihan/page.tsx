@@ -9,9 +9,9 @@ export default function PelatihanPemberdayaan() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<"aktif" | "trash">("aktif")
   const [showModalKegiatan, setShowModalKegiatan] = useState(false)
-  const [showModalPeserta, setShowModalPeserta] = useState<{show: boolean, data: any}>({show: false, data: null})
+  const [showModalPeserta, setShowModalPeserta] = useState<{ show: boolean, data: any }>({ show: false, data: null })
   const [editData, setEditData] = useState<any>(null)
-  
+
   const [searchIKM, setSearchIKM] = useState("")
   const [listIKM, setListIKM] = useState<any[]>([])
   const [pesertaKegiatan, setPesertaKegiatan] = useState<any[]>([])
@@ -27,11 +27,12 @@ export default function PelatihanPemberdayaan() {
       .select(`*, peserta_pelatihan(count)`)
       .eq("is_deleted", tab === "trash")
       .order('updated_at', { ascending: false })
-    
+
     if (!error) setKegiatan(data || [])
     setLoading(false)
   }
 
+  // --- PERBAIKAN HANDLE ACTION ---
   const handleAction = async (id: string, action: "soft-delete" | "permanent-delete" | "restore") => {
     let confirmMsg = "Hapus kegiatan ini?"
     if (action === "permanent-delete") confirmMsg = "Hapus permanen? Data tidak bisa dikembalikan!"
@@ -39,14 +40,20 @@ export default function PelatihanPemberdayaan() {
 
     if (!confirm(confirmMsg)) return
 
+    let res;
     if (action === "soft-delete") {
-      await supabase.from("kegiatan_pelatihan").update({ is_deleted: true }).eq("id", id)
+      res = await supabase.from("kegiatan_pelatihan").update({ is_deleted: true }).eq("id", id)
     } else if (action === "permanent-delete") {
-      await supabase.from("kegiatan_pelatihan").delete().eq("id", id)
+      res = await supabase.from("kegiatan_pelatihan").delete().eq("id", id)
     } else if (action === "restore") {
-      await supabase.from("kegiatan_pelatihan").update({ is_deleted: false }).eq("id", id)
+      res = await supabase.from("kegiatan_pelatihan").update({ is_deleted: false }).eq("id", id)
     }
-    fetchKegiatan()
+
+    if (res?.error) {
+      alert("Terjadi kesalahan: " + res.error.message)
+    } else {
+      fetchKegiatan()
+    }
   }
 
   const fetchPeserta = async (kegiatanId: string) => {
@@ -59,7 +66,7 @@ export default function PelatihanPemberdayaan() {
 
   const cariIKM = async (val: string) => {
     setSearchIKM(val)
-    if(val.length < 2) return setListIKM([])
+    if (val.length < 2) return setListIKM([])
     const { data } = await supabase.from("ikm_binaan").select("*").or(`nama_lengkap.ilike.%${val}%,no_nib.ilike.%${val}%,nik.ilike.%${val}%`).limit(5)
     setListIKM(data || [])
   }
@@ -71,15 +78,14 @@ export default function PelatihanPemberdayaan() {
     if (isExist) return alert("IKM sudah terdaftar.")
 
     const { error } = await supabase.from("peserta_pelatihan").insert([{ kegiatan_id: showModalPeserta.data.id, ikm_id: ikmId }])
-    if(!error) {
+    if (!error) {
       fetchPeserta(showModalPeserta.data.id); fetchKegiatan(); setSearchIKM(""); setListIKM([])
     }
   }
 
-  // FUNGSI EKSPOR EXCEL SESUAI KOLOM PERMINTAAN
   const exportExcelPeserta = (itemKegiatan: any) => {
-    if(pesertaKegiatan.length === 0) return alert("Belum ada data peserta untuk diekspor.")
-    
+    if (pesertaKegiatan.length === 0) return alert("Belum ada data peserta untuk diekspor.")
+
     const dataExport = pesertaKegiatan.map((p, i) => ({
       "No": i + 1,
       "Nama Kegiatan": itemKegiatan.nama_kegiatan,
@@ -94,28 +100,40 @@ export default function PelatihanPemberdayaan() {
     }))
 
     const ws = XLSX.utils.json_to_sheet(dataExport)
-    const wscols = [
-      {wch: 5}, {wch: 30}, {wch: 25}, {wch: 15}, {wch: 25}, 
-      {wch: 20}, {wch: 20}, {wch: 25}, {wch: 40}, {wch: 15}
-    ]
+    const wscols = [{ wch: 5 }, { wch: 30 }, { wch: 25 }, { wch: 15 }, { wch: 25 }, { wch: 20 }, { wch: 20 }, { wch: 25 }, { wch: 40 }, { wch: 15 }]
     ws['!cols'] = wscols
-
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, "Daftar Peserta")
     XLSX.writeFile(wb, `LAPORAN_PESERTA_${itemKegiatan.nama_kegiatan.replace(/ /g, "_")}.xlsx`)
   }
 
+  // --- PERBAIKAN HANDLE SAVE (FIX ERROR 400) ---
   const handleSaveKegiatan = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const fd = new FormData(e.currentTarget)
-    const payload = Object.fromEntries(fd.entries())
-    
+
+    const payload = {
+      nama_kegiatan: fd.get("nama_kegiatan"),
+      sub_kegiatan_pelaksana: fd.get("sub_kegiatan_pelaksana"),
+      waktu_pelaksanaan: fd.get("waktu_pelaksanaan"),
+      tahun_pelaksanaan: parseInt(fd.get("tahun_pelaksanaan") as string) || 0,
+      kuota_peserta: parseInt(fd.get("kuota_peserta") as string) || 0,
+      status_kegiatan: fd.get("status_kegiatan"),
+      deskripsi_kegiatan: fd.get("deskripsi_kegiatan"),
+    }
+
     if (editData) {
       const { error } = await supabase.from("kegiatan_pelatihan").update(payload).eq("id", editData.id)
-      if (error) alert("Gagal update data")
+      if (error) {
+        console.error(error)
+        alert("Gagal update data: " + error.message)
+      }
     } else {
       const { error } = await supabase.from("kegiatan_pelatihan").insert([payload])
-      if (error) alert("Gagal tambah data")
+      if (error) {
+        console.error(error)
+        alert("Gagal tambah data: " + error.message)
+      }
     }
     setEditData(null); setShowModalKegiatan(false); fetchKegiatan()
   }
@@ -132,7 +150,7 @@ export default function PelatihanPemberdayaan() {
           </div>
         </div>
         {tab === "aktif" && (
-          <button onClick={() => {setEditData(null); setShowModalKegiatan(true)}} className="bg-indigo-700 text-white px-8 py-4 rounded-2xl font-black text-xs hover:bg-indigo-800 shadow-lg active:scale-95">➕ TAMBAH KEGIATAN</button>
+          <button onClick={() => { setEditData(null); setShowModalKegiatan(true) }} className="bg-indigo-700 text-white px-8 py-4 rounded-2xl font-black text-xs hover:bg-indigo-800 shadow-lg active:scale-95">➕ TAMBAH KEGIATAN</button>
         )}
       </div>
 
@@ -174,8 +192,7 @@ export default function PelatihanPemberdayaan() {
                   <div className="text-[9px] font-bold text-slate-400 uppercase mt-1">Kapasitas</div>
                 </td>
                 <td className="p-6 text-center">
-                   <span className={`px-4 py-1.5 rounded-full font-black text-[9px] uppercase border-2 ${
-                      tab === "trash" ? "bg-rose-50 text-rose-600 border-rose-100" :
+                  <span className={`px-4 py-1.5 rounded-full font-black text-[9px] uppercase border-2 ${tab === "trash" ? "bg-rose-50 text-rose-600 border-rose-100" :
                       item.status_kegiatan === 'Pendaftaran Dibuka' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100'
                     }`}>{tab === "trash" ? "Dihapus" : item.status_kegiatan}</span>
                 </td>
@@ -183,8 +200,8 @@ export default function PelatihanPemberdayaan() {
                   <div className="flex justify-center gap-2">
                     {tab === "aktif" ? (
                       <>
-                        <button onClick={() => {setShowModalPeserta({show: true, data: item}); fetchPeserta(item.id)}} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase shadow-md hover:bg-indigo-700">👥 Peserta</button>
-                        <button onClick={() => {setEditData(item); setShowModalKegiatan(true)}} className="w-10 h-10 border-2 border-amber-300 rounded-xl flex items-center justify-center text-amber-500 hover:bg-amber-500 hover:text-white transition-all">✏️</button>
+                        <button onClick={() => { setShowModalPeserta({ show: true, data: item }); fetchPeserta(item.id) }} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase shadow-md hover:bg-indigo-700">👥 Peserta</button>
+                        <button onClick={() => { setEditData(item); setShowModalKegiatan(true) }} className="w-10 h-10 border-2 border-amber-300 rounded-xl flex items-center justify-center text-amber-500 hover:bg-amber-500 hover:text-white transition-all">✏️</button>
                         <button onClick={() => handleAction(item.id, "soft-delete")} className="w-10 h-10 border-2 border-rose-200 rounded-xl flex items-center justify-center text-rose-500 hover:bg-rose-600 hover:text-white transition-all text-lg">🗑</button>
                       </>
                     ) : (
@@ -250,12 +267,11 @@ export default function PelatihanPemberdayaan() {
               </div>
               <div className="flex gap-3">
                 <button onClick={() => exportExcelPeserta(showModalPeserta.data)} className="bg-white text-emerald-700 px-6 py-2 rounded-xl font-black text-[10px] uppercase shadow-md hover:bg-emerald-50 transition-all">📊 EXPORT .XLSX</button>
-                <button onClick={() => setShowModalPeserta({show: false, data: null})} className="font-black text-2xl hover:text-rose-200 transition-colors">✕</button>
+                <button onClick={() => setShowModalPeserta({ show: false, data: null })} className="font-black text-2xl hover:text-rose-200 transition-colors">✕</button>
               </div>
             </div>
-            
+
             <div className="p-8 flex-1 overflow-y-auto bg-slate-50">
-              {/* Input Pencarian Peserta */}
               <div className="mb-8 relative">
                 <label className="text-[10px] font-black text-slate-500 uppercase block mb-2 ml-1">Tambah Peserta (Cari Nama IKM / NIB / NIK)</label>
                 <input value={searchIKM} onChange={(e) => cariIKM(e.target.value)} placeholder="Ketik minimal 2 karakter..." className="w-full p-4 rounded-2xl border-2 border-slate-200 outline-none focus:border-emerald-500 font-bold bg-white shadow-inner" />
@@ -274,7 +290,6 @@ export default function PelatihanPemberdayaan() {
                 )}
               </div>
 
-              {/* Tabel Detail Peserta Terdaftar */}
               <div className="rounded-3xl border-2 border-slate-200 overflow-hidden bg-white shadow-lg">
                 <table className="w-full text-left">
                   <thead className="bg-slate-100 text-slate-500">
@@ -286,7 +301,7 @@ export default function PelatihanPemberdayaan() {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {pesertaKegiatan.length === 0 ? (
-                        <tr><td colSpan={3} className="p-10 text-center font-bold text-slate-300 italic">Belum ada peserta terdaftar.</td></tr>
+                      <tr><td colSpan={3} className="p-10 text-center font-bold text-slate-300 italic">Belum ada peserta terdaftar.</td></tr>
                     ) : pesertaKegiatan.map((p, i) => (
                       <tr key={p.id} className="hover:bg-slate-50 transition-all">
                         <td className="p-4 text-center font-bold text-slate-400 text-xs border-r">{i + 1}</td>
@@ -301,7 +316,7 @@ export default function PelatihanPemberdayaan() {
                           </div>
                         </td>
                         <td className="p-4 text-center border-l">
-                          <button onClick={async () => { if(confirm("Hapus peserta ini dari kegiatan?")) { await supabase.from("peserta_pelatihan").delete().eq("id", p.id); fetchPeserta(showModalPeserta.data.id); fetchKegiatan(); } }} className="text-rose-500 px-4 py-2 rounded-xl font-black text-[9px] uppercase border-2 border-rose-50 hover:bg-rose-600 hover:text-white transition-all shadow-sm">🗑️ Hapus</button>
+                          <button onClick={async () => { if (confirm("Hapus peserta ini dari kegiatan?")) { await supabase.from("peserta_pelatihan").delete().eq("id", p.id); fetchPeserta(showModalPeserta.data.id); fetchKegiatan(); } }} className="text-rose-500 px-4 py-2 rounded-xl font-black text-[9px] uppercase border-2 border-rose-50 hover:bg-rose-600 hover:text-white transition-all shadow-sm">🗑️ Hapus</button>
                         </td>
                       </tr>
                     ))}
