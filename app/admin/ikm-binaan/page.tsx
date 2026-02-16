@@ -132,7 +132,6 @@ export default function IKMPage() {
   const handleUpdate = async () => {
     if (!editData) return
     
-    // Proteksi: Hanya kirim kolom data, jangan kirim metadata/ID di body update
     const payload = {
       no_nib: editData.no_nib,
       nik: editData.nik,
@@ -177,7 +176,8 @@ export default function IKMPage() {
         const worksheet = workbook.Sheets[workbook.SheetNames[0]]
         const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet)
         
-        const cleanData = jsonData.map(item => ({
+        // 1. Bersihkan data dari Excel
+        const allDataFromExcel = jsonData.map(item => ({
             no_nib: String(item.no_nib || "").replace(/[^0-9]/g, ""),
             nik: String(item.nik || "").replace(/[^0-9]/g, ""),
             nama_lengkap: item.nama_lengkap || "",
@@ -188,17 +188,43 @@ export default function IKMPage() {
             created_at: new Date().toISOString()
         }));
 
-        const { error } = await supabase.from("ikm_binaan").insert(cleanData)
-        if (!error) { 
-            alert("Import Berhasil! 🚀"); 
-            await saveLog(`Import ${cleanData.length} data via Excel`, "input");
-            fetchData(); 
-        } else {
-            alert("Database menolak data: " + error.message);
+        // 2. Ambil data NIB yang sudah ada di Database (untuk perbandingan)
+        const { data: existingRecords } = await supabase
+          .from("ikm_binaan")
+          .select("no_nib")
+          .eq("is_deleted", false);
+
+        const existingNibs = new Set(existingRecords?.map(r => r.no_nib) || []);
+
+        // 3. Filter data: Pisahkan antara yang baru dan yang duplikat
+        const dataBaru = allDataFromExcel.filter(item => !existingNibs.has(item.no_nib));
+        const dataDuplikat = allDataFromExcel.filter(item => existingNibs.has(item.no_nib));
+
+        // 4. Logika Konfirmasi
+        if (dataBaru.length === 0) {
+          alert(`Gagal Import: Semua data (${dataDuplikat.length} baris) sudah terdaftar di database.`);
+          return;
         }
-      } catch (err) { alert("Format file tidak didukung."); }
+
+        const pesanKonfirmasi = dataDuplikat.length > 0 
+          ? `Ditemukan ${dataBaru.length} data baru dan ${dataDuplikat.length} data duplikat.\n\nSistem hanya akan menyimpan ${dataBaru.length} data baru. Lanjutkan?`
+          : `Siap mengimport ${dataBaru.length} data baru. Lanjutkan?`;
+
+        if (confirm(pesanKonfirmasi)) {
+          const { error } = await supabase.from("ikm_binaan").insert(dataBaru)
+          if (!error) { 
+              alert(`Berhasil! 🚀\n${dataBaru.length} data baru telah disimpan.\n${dataDuplikat.length} data duplikat diabaikan.`); 
+              await saveLog(`Import ${dataBaru.length} data baru via Excel (Abaikan ${dataDuplikat.length} duplikat)`, "input");
+              fetchData(); 
+          } else {
+              alert("Database menolak data: " + error.message);
+          }
+        }
+      } catch (err) { alert("Format file tidak didukung atau terjadi kesalahan pembacaan."); }
     }
     reader.readAsBinaryString(file)
+    // Reset input file agar bisa pilih file yang sama lagi jika perlu
+    e.target.value = "";
   }
 
   const exportExcel = () => {
