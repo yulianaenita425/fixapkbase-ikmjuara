@@ -71,17 +71,42 @@ export default function PelatihanPemberdayaan() {
     setListIKM(data || [])
   }
 
+  // --- PENERAPAN REKOMENDASI TAMBAHAN (FUNGSI TAMBAH) ---
   const tambahPeserta = async (ikmId: string) => {
-    const jumlahSekarang = pesertaKegiatan.length
-    if (jumlahSekarang >= (showModalPeserta.data?.kuota_peserta || 0)) return alert("Gagal: Kuota penuh!")
-    const isExist = pesertaKegiatan.some(p => p.ikm_id === ikmId)
-    if (isExist) return alert("IKM sudah terdaftar.")
-
-    const { error } = await supabase.from("peserta_pelatihan").insert([{ kegiatan_id: showModalPeserta.data.id, ikm_id: ikmId }])
-    if (!error) {
-      fetchPeserta(showModalPeserta.data.id); fetchKegiatan(); setSearchIKM(""); setListIKM([])
+    // Pastikan data kegiatan ada
+    if (!showModalPeserta.data?.id) {
+      return alert("ID Kegiatan tidak ditemukan.");
     }
-  }
+
+    const jumlahSekarang = pesertaKegiatan.length;
+    const kuota = showModalPeserta.data?.kuota_peserta || 0;
+
+    if (jumlahSekarang >= kuota) {
+      return alert("Gagal: Kuota penuh!");
+    }
+
+    const isExist = pesertaKegiatan.some(p => p.ikm_id === ikmId);
+    if (isExist) {
+      return alert("IKM sudah terdaftar dalam kegiatan ini.");
+    }
+
+    const { error } = await supabase
+      .from("peserta_pelatihan")
+      .insert([{ 
+        kegiatan_id: showModalPeserta.data.id, 
+        ikm_id: ikmId 
+      }]);
+
+    if (error) {
+      alert("Gagal menambahkan: " + error.message);
+    } else {
+      // Refresh data
+      fetchPeserta(showModalPeserta.data.id);
+      fetchKegiatan();
+      setSearchIKM("");
+      setListIKM([]);
+    }
+  };
 
   const exportExcelPeserta = (itemKegiatan: any) => {
     if (pesertaKegiatan.length === 0) return alert("Belum ada data peserta untuk diekspor.")
@@ -256,7 +281,7 @@ export default function PelatihanPemberdayaan() {
         </div>
       )}
 
-      {/* --- MODAL PESERTA REVISI --- */}
+      {/* --- MODAL PESERTA --- */}
       {showModalPeserta.show && (
         <div className="fixed inset-0 bg-indigo-950/95 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="bg-white w-full max-w-5xl rounded-[40px] border-4 border-emerald-500 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -275,15 +300,29 @@ export default function PelatihanPemberdayaan() {
               <div className="mb-8 relative">
                 <label className="text-[10px] font-black text-slate-500 uppercase block mb-2 ml-1">Tambah Peserta (Cari Nama IKM / NIB / NIK)</label>
                 <input value={searchIKM} onChange={(e) => cariIKM(e.target.value)} placeholder="Ketik minimal 2 karakter..." className="w-full p-4 rounded-2xl border-2 border-slate-200 outline-none focus:border-emerald-500 font-bold bg-white shadow-inner" />
+                
+                {/* --- PENERAPAN REKOMENDASI TAMBAHAN (UI DROPDOWN) --- */}
                 {listIKM.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 bg-white shadow-2xl rounded-2xl mt-2 border-2 border-emerald-100 z-10 overflow-hidden">
+                  <div className="absolute top-full left-0 right-0 bg-white shadow-2xl rounded-2xl mt-2 border-2 border-emerald-100 z-[60] overflow-hidden">
                     {listIKM.map(ikm => (
                       <div key={ikm.id} className="p-4 border-b last:border-0 flex justify-between items-center hover:bg-emerald-50">
-                        <div>
+                        <div className="flex-1">
                           <div className="font-black text-slate-800 uppercase text-sm">{ikm.nama_lengkap}</div>
-                          <div className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">NIB: {ikm.no_nib} | Usaha: {ikm.nama_usaha || "-"}</div>
+                          <div className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">
+                            NIB: {ikm.no_nib} | Usaha: {ikm.nama_usaha || "-"}
+                          </div>
                         </div>
-                        <button onClick={() => tambahPeserta(ikm.id)} className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase shadow-sm active:scale-95">TAMBAHKAN ➕</button>
+                        <button 
+                          type="button" 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation(); 
+                            tambahPeserta(ikm.id);
+                          }} 
+                          className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase shadow-sm active:scale-95 hover:bg-emerald-700 cursor-pointer relative z-[70]"
+                        >
+                          TAMBAHKAN ➕
+                        </button>
                       </div>
                     ))}
                   </div>
