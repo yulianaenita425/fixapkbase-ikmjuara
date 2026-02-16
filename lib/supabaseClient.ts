@@ -1,17 +1,20 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Pastikan penulisan NEXT_PUBLIC harus ada di depan agar bisa diakses di sisi browser
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder-project.supabase.co';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key';
 
-// Logika cadangan agar build tidak crash
-// Jika URL kosong, kita kasih URL palsu yang valid formatnya (http/https)
-const finalUrl = supabaseUrl.startsWith('http') ? supabaseUrl : 'https://placeholder-project.supabase.co';
-const finalKey = supabaseAnonKey || 'placeholder-key';
+/**
+ * Singleton Pattern: Mencegah pembuatan instance Supabase client berulang kali
+ * terutama saat development (Fast Refresh di Next.js).
+ */
+export const supabase = (globalThis as any).supabase || createClient(supabaseUrl, supabaseAnonKey);
 
-export const supabase = createClient(finalUrl, finalKey);
+if (process.env.NODE_ENV !== 'production') {
+  (globalThis as any).supabase = supabase;
+}
 
-// Tambahkan tipe data untuk parameter agar lebih aman (optional)
+// --- LOGGING SYSTEM ---
+
 export type LogAction = 'input' | 'edit' | 'hapus' | 'pencarian' | 'view' | 'login';
 
 export const saveLog = async (description: string, action_type: LogAction) => {
@@ -19,10 +22,11 @@ export const saveLog = async (description: string, action_type: LogAction) => {
     // Ambil user yang sedang login secara otomatis dari Supabase Auth
     const { data: { user } } = await supabase.auth.getUser();
     
-    // Ambil role dari metadata atau table profile jika ada
+    // Ambil metadata user (jika ada)
     const username = user?.user_metadata?.username || user?.email || 'Anonim';
     const role = user?.user_metadata?.role || 'user';
 
+    // Insert ke tabel activity_logs
     await supabase.from("activity_logs").insert([
       {
         username,
