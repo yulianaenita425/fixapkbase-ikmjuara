@@ -17,11 +17,13 @@ export default function IKMPage() {
     dataBaru: any[];
     dataDuplikat: any[];
     isLoading: boolean;
+    showDuplicateList: boolean; // Fitur baru: toggle list ganda
   }>({
     show: false,
     dataBaru: [],
     dataDuplikat: [],
-    isLoading: false
+    isLoading: false,
+    showDuplicateList: false
   });
 
   const [form, setForm] = useState({
@@ -119,7 +121,7 @@ export default function IKMPage() {
     if (!error) { setEditData(null); fetchData(); await saveLog(`Update data IKM: ${editData.nama_usaha}`, "edit"); }
   };
 
-  // ================= EXCEL LOGIC (MODERNIZED) =================
+  // ================= EXCEL LOGIC (WITH DUPLICATE VIEWER) =================
   const downloadTemplate = () => {
     const template = [{ no_nib: "", nik: "", nama_lengkap: "", nama_usaha: "", alamat: "", no_hp: "" }];
     const worksheet = XLSX.utils.json_to_sheet(template);
@@ -156,12 +158,12 @@ export default function IKMPage() {
         const dataBaru = allDataFromExcel.filter(item => !existingNibs.has(item.no_nib));
         const dataDuplikat = allDataFromExcel.filter(item => existingNibs.has(item.no_nib));
 
-        // Tampilkan Modal Custom alih-alih window.confirm
         setImportSummary({
           show: true,
           dataBaru,
           dataDuplikat,
-          isLoading: false
+          isLoading: false,
+          showDuplicateList: false
         });
 
       } catch (err) { alert("Format file tidak didukung."); }
@@ -176,7 +178,7 @@ export default function IKMPage() {
     
     if (!error) {
       await saveLog(`Import ${importSummary.dataBaru.length} data via Excel`, "input");
-      setImportSummary({ show: false, dataBaru: [], dataDuplikat: [], isLoading: false });
+      setImportSummary({ show: false, dataBaru: [], dataDuplikat: [], isLoading: false, showDuplicateList: false });
       fetchData();
       alert("Import Berhasil! 🚀");
     } else {
@@ -203,43 +205,65 @@ export default function IKMPage() {
   return (
     <div className="p-8 bg-gray-50 min-h-screen text-black font-sans">
       
-      {/* MODAL IMPORT ATRAKTIF */}
+      {/* MODAL IMPORT PRO DENGAN LIST GANDA */}
       {importSummary.show && (
         <div className="fixed inset-0 bg-blue-950/60 backdrop-blur-md flex justify-center items-center z-[60] p-4">
           <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden border border-white/20 animate-in fade-in zoom-in duration-300">
             <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-8 text-white text-center">
-              <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur-sm">
-                <span className="text-4xl">📥</span>
+              <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur-sm">
+                <span className="text-3xl">📊</span>
               </div>
-              <h2 className="text-2xl font-black">Konfirmasi Import Data</h2>
-              <p className="text-blue-100 text-sm mt-1">Sistem mendeteksi ringkasan data sebagai berikut:</p>
+              <h2 className="text-2xl font-black">Validasi Data Excel</h2>
+              <p className="text-blue-100 text-sm mt-1">Kami memfilter data Anda agar tetap bersih.</p>
             </div>
             
             <div className="p-8">
-              <div className="grid grid-cols-2 gap-4 mb-8">
+              <div className="grid grid-cols-2 gap-4 mb-6">
                 <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-3xl text-center">
                   <p className="text-[10px] font-black text-emerald-600 uppercase tracking-wider mb-1">Data Baru</p>
                   <p className="text-3xl font-black text-emerald-700">{importSummary.dataBaru.length}</p>
-                  <p className="text-[10px] text-emerald-500 mt-1">Akan Ditambahkan</p>
                 </div>
                 <div className="bg-amber-50 border border-amber-100 p-4 rounded-3xl text-center">
                   <p className="text-[10px] font-black text-amber-600 uppercase tracking-wider mb-1">Data Ganda</p>
                   <p className="text-3xl font-black text-amber-700">{importSummary.dataDuplikat.length}</p>
-                  <p className="text-[10px] text-amber-500 mt-1">Akan Diabaikan</p>
                 </div>
               </div>
 
+              {/* Fitur Intip Data Ganda */}
+              {importSummary.dataDuplikat.length > 0 && (
+                <div className="mb-6">
+                   <button 
+                    onClick={() => setImportSummary({...importSummary, showDuplicateList: !importSummary.showDuplicateList})}
+                    className="w-full text-xs font-bold text-amber-600 flex justify-between items-center px-4 py-2 bg-amber-100/50 rounded-xl hover:bg-amber-100 transition"
+                   >
+                     {importSummary.showDuplicateList ? "🔼 Sembunyikan Detail Ganda" : "🔽 Lihat Nama Data Ganda"}
+                     <span className="bg-amber-600 text-white px-2 py-0.5 rounded-full text-[10px]">{importSummary.dataDuplikat.length}</span>
+                   </button>
+                   
+                   {importSummary.showDuplicateList && (
+                     <div className="mt-3 max-h-40 overflow-y-auto border border-amber-100 rounded-xl bg-amber-50/30 p-2 space-y-2">
+                        {importSummary.dataDuplikat.map((item, idx) => (
+                          <div key={idx} className="flex flex-col border-b border-amber-100 last:border-0 pb-1 text-left">
+                            <span className="text-[11px] font-bold text-gray-700">{item.nama_usaha || "Tanpa Nama Usaha"}</span>
+                            <span className="text-[9px] text-amber-600 font-mono">NIB: {item.no_nib}</span>
+                          </div>
+                        ))}
+                     </div>
+                   )}
+                </div>
+              )}
+
               {importSummary.dataBaru.length === 0 ? (
                 <div className="bg-red-50 text-red-600 p-4 rounded-2xl text-sm font-medium text-center border border-red-100">
-                  ⚠️ Tidak ada data baru yang bisa diimport.
+                  ⚠️ Seluruh data di file ini sudah terdaftar.
                 </div>
               ) : (
-                <p className="text-center text-gray-500 text-sm mb-6 leading-relaxed">
-                  Apakah Anda yakin ingin memasukkan <b>{importSummary.dataBaru.length} data</b> ini ke dalam database utama?
+                <p className="text-center text-gray-500 text-xs mb-8">
+                  Hanya <b>{importSummary.dataBaru.length} data baru</b> yang akan dimasukkan ke sistem. Lanjutkan?
                 </p>
               )}
 
-              <div className="flex gap-3 mt-4">
+              <div className="flex gap-3">
                 <button 
                   onClick={() => setImportSummary({ ...importSummary, show: false })}
                   className="flex-1 py-4 bg-gray-100 text-gray-500 rounded-2xl font-bold hover:bg-gray-200 transition-all"
@@ -250,9 +274,9 @@ export default function IKMPage() {
                   <button 
                     onClick={executeImport}
                     disabled={importSummary.isLoading}
-                    className="flex-2 px-8 py-4 bg-blue-600 text-white rounded-2xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 active:scale-95 transition-all disabled:opacity-50"
+                    className="flex-2 px-8 py-4 bg-blue-600 text-white rounded-2xl font-bold shadow-lg shadow-blue-100 hover:bg-blue-700 active:scale-95 transition-all disabled:opacity-50"
                   >
-                    {importSummary.isLoading ? "Memproses..." : "Ya, Simpan Data"}
+                    {importSummary.isLoading ? "Proses..." : "Ya, Simpan"}
                   </button>
                 )}
               </div>
