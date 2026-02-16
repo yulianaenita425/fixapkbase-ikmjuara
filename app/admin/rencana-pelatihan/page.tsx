@@ -10,7 +10,7 @@ interface Pelatihan {
   jadwal: string;
   kuota: number;
   deskripsi: string;
-  is_published: boolean; // Kolom Baru
+  is_published: boolean; 
   created_at?: string;
 }
 
@@ -29,14 +29,11 @@ export default function AdminPelatihanPage() {
   const [daftarPelatihan, setDaftarPelatihan] = useState<Pelatihan[]>([]);
   const [daftarPeserta, setDaftarPeserta] = useState<Peserta[]>([]);
   
-  // Filter & Search State
   const [filterPelatihan, setFilterPelatihan] = useState<string>('Semua');
   
-  // State Form Admin
   const [editId, setEditId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ nama: '', jadwal: '', kuota: '', deskripsi: '' });
 
-  // --- 1. Ambil Data ---
   const fetchData = async () => {
     const resPelatihan = await supabase.from('kegiatan_2026').select('*').order('created_at', { ascending: false });
     const resPeserta = await supabase.from('list_tunggu_peserta').select('*').order('created_at', { ascending: false });
@@ -45,7 +42,6 @@ export default function AdminPelatihanPage() {
     if (resPeserta.data) setDaftarPeserta(resPeserta.data);
   };
 
-  // --- 2. Realtime Subscription ---
   useEffect(() => {
     fetchData();
     const channel = supabase
@@ -57,7 +53,6 @@ export default function AdminPelatihanPage() {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // --- 3. Logika Statistik & Filter ---
   const statsPerPelatihan = useMemo(() => {
     const stats: Record<string, { total: number; diterima: number; ditolak: number; pending: number }> = {};
     
@@ -78,7 +73,6 @@ export default function AdminPelatihanPage() {
     return daftarPeserta.filter(p => p.nama_pelatihan === filterPelatihan);
   }, [daftarPeserta, filterPelatihan]);
 
-  // --- 4. Handler CRUD & Status ---
   const handleSimpanKegiatan = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -133,10 +127,35 @@ export default function AdminPelatihanPage() {
     }
   };
 
-  const handleHapusKegiatan = async (id: string) => {
-    if (confirm("Hapus kegiatan? Menghapus kegiatan tidak menghapus data peserta yang sudah masuk, namun sisa kuota akan hilang.")) {
-      await supabase.from('kegiatan_2026').delete().eq('id', id);
-      fetchData();
+  // --- IMPLEMENTASI REKOMENDASI HAPUS KEGIATAN ---
+  const handleHapusKegiatan = async (id: string, namaPelatihan: string) => {
+    if (confirm(`Hapus kegiatan "${namaPelatihan}"? Seluruh data peserta pada kegiatan ini juga akan ikut terhapus secara permanen.`)) {
+      setLoading(true);
+      try {
+        // 1. Hapus pendaftar terlebih dahulu berdasarkan relasi teks nama_pelatihan
+        const { error: errorPeserta } = await supabase
+          .from('list_tunggu_peserta')
+          .delete()
+          .eq('nama_pelatihan', namaPelatihan);
+
+        if (errorPeserta) throw new Error(`Gagal membersihkan data peserta: ${errorPeserta.message}`);
+
+        // 2. Setelah peserta bersih, hapus baris kegiatan
+        const { error: errorKegiatan } = await supabase
+          .from('kegiatan_2026')
+          .delete()
+          .eq('id', id);
+
+        if (errorKegiatan) throw new Error(`Gagal menghapus kegiatan: ${errorKegiatan.message}`);
+
+        alert("Kegiatan dan data pendaftar terkait berhasil dihapus.");
+        fetchData();
+      } catch (error: any) {
+        console.error("Delete Error:", error);
+        alert(error.message || "Terjadi kesalahan saat menghapus data.");
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -162,7 +181,6 @@ export default function AdminPelatihanPage() {
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* KOLOM KIRI: Form Input */}
           <div className="lg:col-span-4">
             <div className="sticky top-8">
               <form onSubmit={handleSimpanKegiatan} className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
@@ -187,7 +205,6 @@ export default function AdminPelatihanPage() {
             </div>
           </div>
 
-          {/* KOLOM KANAN: Monitoring & Validasi */}
           <div className="lg:col-span-8 space-y-8">
             <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
               <div className="p-4 bg-gray-50 border-b font-bold text-gray-700 flex justify-between items-center">
@@ -234,7 +251,7 @@ export default function AdminPelatihanPage() {
                                 setFormData({nama: item.nama, jadwal: item.jadwal, kuota: item.kuota.toString(), deskripsi: item.deskripsi});
                               }} className="text-blue-600 hover:text-blue-800 text-[10px] font-black uppercase underline decoration-2 underline-offset-4 transition-all">Edit</button>
                               
-                              <button onClick={() => handleHapusKegiatan(item.id)} className="text-red-400 hover:text-red-600 text-[10px] font-bold uppercase transition-colors">Hapus</button>
+                              <button onClick={() => handleHapusKegiatan(item.id, item.nama)} className="text-red-400 hover:text-red-600 text-[10px] font-bold uppercase transition-colors">Hapus</button>
                             </div>
                             
                             <button 
@@ -256,7 +273,6 @@ export default function AdminPelatihanPage() {
               </div>
             </div>
 
-            {/* Tabel 2: Konfirmasi & Filter Pendaftar (Sama seperti sebelumnya) */}
             <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
               <div className="p-5 bg-[#1A1A40] text-white flex flex-col md:flex-row justify-between items-center gap-4">
                 <div>
