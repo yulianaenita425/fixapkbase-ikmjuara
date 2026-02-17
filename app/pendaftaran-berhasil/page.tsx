@@ -73,12 +73,12 @@ export default function SuksesPage() {
       const publicUrl = publicUrlData.publicUrl;
 
       // 3. Update Database
-      const { error: dbError } = await supabase
-        .from('list_tunggu_peserta')
-        .update({ foto: publicUrl })
-        .eq('nama_peserta', userName)
-        .order('created_at', { ascending: false })
-        .limit(1);
+const { error: dbError } = await supabase
+  .from('list_tunggu_peserta')
+  .update({ foto: publicUrl })
+  .match(userId ? { id: userId } : { nama_peserta: userName }) // Cari pake ID, kalo gaada baru Nama
+  .order('created_at', { ascending: false })
+  .limit(1);
 
       if (dbError) throw dbError;
 

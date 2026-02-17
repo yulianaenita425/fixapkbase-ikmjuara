@@ -11,7 +11,8 @@ import {
   ChevronRight,
   Loader2,
   FileText,
-  Filter
+  Filter,
+  EyeOff
 } from "lucide-react";
 
 export default function BerkasMasukPage() {
@@ -76,22 +77,22 @@ export default function BerkasMasukPage() {
   });
 
   return (
-    <div className="min-h-screen bg-[#F1F5F9] p-6 lg:p-12">
+    <div className="min-h-screen bg-[#F1F5F9] p-6 lg:p-12 font-sans">
       <div className="max-w-7xl mx-auto">
         
         {/* BREADCRUMB & TITLE SECTION */}
         <div className="mb-10">
           <div className="flex items-center gap-2 text-slate-500 text-xs font-bold uppercase tracking-widest mb-2">
-            <span>Admin</span>
+            <span>Admin Dashboard</span>
             <ChevronRight size={12} />
-            <span className="text-indigo-600">Berkas Masuk</span>
+            <span className="text-indigo-600">Verifikasi Berkas</span>
           </div>
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>
               <h1 className="text-4xl font-black text-[#1A1A40] tracking-tighter uppercase">
                 Inbox Pendaftar <span className="text-indigo-600">.</span>
               </h1>
-              <p className="text-slate-500 font-medium mt-1">Kelola data pelaku usaha yang baru masuk.</p>
+              <p className="text-slate-500 font-medium mt-1">Total {pendaftar.length} permohonan masuk ke sistem.</p>
             </div>
             
             <div className="flex flex-wrap gap-3">
@@ -121,7 +122,7 @@ export default function BerkasMasukPage() {
 
               <button 
                 onClick={fetchData}
-                className="p-4 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200"
+                className="p-4 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 transition-all shadow-lg"
               >
                 <RefreshCcw size={20} className={loading ? "animate-spin" : ""} />
               </button>
@@ -129,26 +130,17 @@ export default function BerkasMasukPage() {
           </div>
         </div>
 
-        {/* STATS MINI */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Data Ditampilkan</p>
-                <p className="text-2xl font-black text-[#1A1A40]">{filteredData.length} <span className="text-sm font-medium text-slate-400">Pendaftar</span></p>
-            </div>
-        </div>
-
         {/* MAIN TABLE */}
         <div className="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/60 overflow-hidden border border-slate-200">
           <div className="overflow-x-auto">
-            <table className="w-full text-left">
+            <table className="w-full text-left border-collapse">
               <thead>
-                {/* HEADER: Menggunakan slate-700 agar teks judul kolom sangat jelas terbaca */}
-                <tr className="bg-slate-100 border-b border-slate-200">
-                  <th className="p-6 text-[11px] font-black text-slate-700 uppercase tracking-[0.2em]">Profil Pendaftar</th>
-                  <th className="p-6 text-[11px] font-black text-slate-700 uppercase tracking-[0.2em]">Informasi Bisnis</th>
-                  <th className="p-6 text-[11px] font-black text-slate-700 uppercase tracking-[0.2em]">Pelatihan</th>
-                  <th className="p-6 text-[11px] font-black text-slate-700 uppercase tracking-[0.2em]">Status</th>
-                  <th className="p-6 text-[11px] font-black text-slate-700 uppercase tracking-[0.2em] text-center">Tindakan</th>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="p-6 text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Profil Pendaftar</th>
+                  <th className="p-6 text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Bisnis & Produk</th>
+                  <th className="p-6 text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Pelatihan Diminati</th>
+                  <th className="p-6 text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Status</th>
+                  <th className="p-6 text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] text-center">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -156,13 +148,13 @@ export default function BerkasMasukPage() {
                   <tr>
                     <td colSpan={5} className="p-24 text-center">
                       <Loader2 className="animate-spin inline text-indigo-600 mb-4" size={40} />
-                      <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Sinkronisasi Database...</p>
+                      <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Mengambil Data...</p>
                     </td>
                   </tr>
                 ) : filteredData.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="p-24 text-center">
-                      <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Tidak ada data pendaftar ditemukan.</p>
+                      <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Data tidak ditemukan.</p>
                     </td>
                   </tr>
                 ) : (
@@ -170,35 +162,35 @@ export default function BerkasMasukPage() {
                     <tr key={item.id} className="hover:bg-indigo-50/30 transition-all group">
                       <td className="p-6">
                         <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 bg-indigo-100 rounded-2xl flex items-center justify-center text-indigo-600 font-black text-lg shadow-inner group-hover:scale-110 transition-transform">
+                          <div className="w-12 h-12 bg-indigo-100 rounded-2xl flex items-center justify-center text-indigo-600 font-black text-lg">
                             {item.nama_peserta?.charAt(0) || "?"}
                           </div>
                           <div>
-                            <p className="font-black text-[#1A1A40] uppercase text-sm leading-none mb-1">{item.nama_peserta}</p>
-                            <p className="text-xs text-slate-400 font-bold tracking-tighter">{item.no_hp}</p>
+                            <p className="font-black text-[#1A1A40] uppercase text-sm mb-1">{item.nama_peserta}</p>
+                            <p className="text-xs text-slate-400 font-bold">{item.no_hp}</p>
                           </div>
                         </div>
                       </td>
                       <td className="p-6">
-                        <p className="text-sm font-black text-slate-700 uppercase tracking-tight mb-1">{item.nama_usaha}</p>
-                        <span className="px-3 py-1 bg-amber-100 text-[9px] font-black text-amber-700 rounded-lg uppercase">
+                        <p className="text-sm font-black text-slate-700 uppercase mb-1">{item.nama_usaha}</p>
+                        <span className="px-3 py-1 bg-amber-50 text-[9px] font-black text-amber-600 rounded-lg uppercase border border-amber-100">
                           {item.produk_ut || item.produk_utama || "N/A"}
                         </span>
                       </td>
                       <td className="p-6">
-                        <p className="text-sm font-medium text-slate-500">{item.nama_pelatihan}</p>
-                        <div className="flex items-center gap-2 text-slate-300 mt-1">
+                        <p className="text-sm font-medium text-slate-600 leading-tight mb-1">{item.nama_pelatihan}</p>
+                        <div className="flex items-center gap-1.5 text-slate-400">
                           <Clock size={12} />
-                          <p className="text-[10px] font-bold uppercase">
+                          <p className="text-[10px] font-bold">
                             {item.created_at ? new Date(item.created_at).toLocaleDateString('id-ID') : '-'}
                           </p>
                         </div>
                       </td>
                       <td className="p-6">
                         <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${
-                          item.status?.toLowerCase() === 'terverifikasi' ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'
+                          item.status?.toLowerCase() === 'terverifikasi' ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-500'
                         }`}>
-                          {item.status || 'Pending'}
+                          {item.status || 'Baru'}
                         </span>
                       </td>
                       <td className="p-6">
@@ -214,24 +206,24 @@ export default function BerkasMasukPage() {
                             <ExternalLink size={18} />
                           </a>
                           
-                          {/* LOGIKA TOMBOL BERKAS DENGAN FEEDBACK */}
+                          {/* PERBAIKAN LOGIKA TOMBOL BERKAS */}
                           {item.foto ? (
                             <a 
                               href={item.foto} 
                               target="_blank" 
                               rel="noopener noreferrer"
                               className="p-3 bg-white border border-slate-100 text-indigo-500 rounded-xl hover:bg-indigo-500 hover:text-white transition-all shadow-sm"
-                              title="Lihat Berkas"
+                              title="Buka Foto KTP"
                             >
                               <FileText size={18} />
                             </a>
                           ) : (
                             <button 
-                              onClick={() => alert("Kolom 'foto' tidak ditemukan di database atau kosong. Silakan tambah kolom 'foto' di Supabase.")}
-                              className="p-3 bg-slate-50 text-slate-300 border border-slate-100 rounded-xl cursor-help"
-                              title="Berkas Tidak Tersedia"
+                              disabled
+                              className="p-3 bg-slate-50 text-slate-300 border border-slate-100 rounded-xl cursor-not-allowed"
+                              title="Berkas Belum Diunggah"
                             >
-                              <FileText size={18} />
+                              <EyeOff size={18} />
                             </button>
                           )}
 
@@ -253,12 +245,12 @@ export default function BerkasMasukPage() {
           </div>
         </div>
 
-        {/* SYSTEM FOOTER */}
-        <div className="mt-8 flex justify-between items-center px-6">
-            <p className="text-[10px] font-black text-slate-400 tracking-[0.3em] uppercase">E-Government System v1.0</p>
-            <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <p className="text-[10px] font-black text-slate-400 uppercase">Database Terhubung</p>
+        {/* FOOTER */}
+        <div className="mt-8 flex justify-between items-center px-6 opacity-50">
+            <p className="text-[9px] font-black text-slate-400 tracking-[0.3em] uppercase">IKM JUARA MADIUN SYSTEM</p>
+            <div className="flex items-center gap-2 text-green-600 font-bold text-[9px] uppercase tracking-tighter">
+                <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                Terhubung Cloud Database
             </div>
         </div>
       </div>
