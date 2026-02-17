@@ -25,22 +25,21 @@ export default function SuksesPage() {
     setUploading(true);
 
     try {
-      // 1. Ambil ID & Nama dari Storage (Pembersihan spasi/null)
+      // 1. Ambil data dari localStorage
       const rawId = localStorage.getItem("user_registration_id");
-      const registrationId = rawId ? rawId.trim() : null;
       const savedName = localStorage.getItem("user_name_ikm") || userName;
 
-      // 2. Kompresi Gambar
+      // 2. Kompresi Gambar (Optimasi agar upload cepat)
       if (file.type.startsWith("image/")) {
         const options = { maxSizeMB: 0.2, maxWidthOrHeight: 1280, useWebWorker: true };
         try { 
           file = await imageCompression(file, options); 
         } catch (err) { 
-          console.error("Gagal kompresi, lanjut menggunakan file asli:", err); 
+          console.error("Gagal kompresi, menggunakan file asli:", err); 
         }
       }
 
-      // 3. Persiapan Path File di Storage
+      // 3. Persiapan Path File
       const fileExt = file.name.split('.').pop();
       const cleanFileName = savedName.trim().replace(/\s+/g, '-').toLowerCase();
       const fileName = `${cleanFileName}-${Date.now()}.${fileExt}`;
@@ -57,41 +56,49 @@ export default function SuksesPage() {
       const { data: publicUrlData } = supabase.storage.from('berkas-ikm').getPublicUrl(filePath);
       const publicUrl = publicUrlData.publicUrl;
 
-// 6. LOGIKA UPDATE DATABASE (FORCE WHERE CLAUSE)
-      // Kita menggunakan .neq('created_at', null) sebagai klausa WHERE permanen 
-      // agar Supabase menganggap query ini "Aman".
+      // 6. LOGIKA UPDATE DATABASE - ANTI "UNDEFINED" UUID
+      let updateResult = null;
+      let dbError = null;
       
-      let updateQuery = supabase
-        .from('list_tunggu_peserta')
-        .update({ foto: publicUrl });
+      // Validasi ketat format UUID (Harus 36 karakter dan bukan string "undefined")
+      const isValidUUID = rawId && rawId.length === 36 && rawId !== "undefined";
 
-      if (registrationId && registrationId !== "null") {
-        // Jika ID ada, gunakan ID (Filter Terbaik)
-        updateQuery = updateQuery.eq('id', registrationId);
-      } else if (savedName && savedName !== "Sobat IKM") {
-        // Jika ID tidak ada tapi nama ada, gunakan Nama
-        updateQuery = updateQuery.ilike('nama_peserta', `%${savedName}%`);
-      } else {
-        // JIKA SEMUA KOSONG: Kita paksa filter menggunakan waktu 
-        // Ini akan mengupdate data yang dibuat dalam 10 menit terakhir saja (Demi Keamanan)
-        const sepuluhMenitLalu = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-        updateQuery = updateQuery.gt('created_at', sepuluhMenitLalu);
+      if (isValidUUID) {
+        console.log("Mencoba update via ID valid:", rawId);
+        const { data, error } = await supabase
+          .from('list_tunggu_peserta')
+          .update({ foto: publicUrl })
+          .eq('id', rawId)
+          .select();
+        updateResult = data;
+        dbError = error;
+      } 
+      
+      // Jika ID tidak valid/gagal, gunakan filter Nama & Batasan Waktu (1 Jam Terakhir)
+      if (!updateResult || updateResult.length === 0) {
+        console.warn("ID tidak valid/kosong, menggunakan filter cadangan (Nama & Waktu)...");
+        const satuJamLalu = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+        
+        const { data, error } = await supabase
+          .from('list_tunggu_peserta')
+          .update({ foto: publicUrl })
+          .ilike('nama_peserta', `%${savedName}%`)
+          .gt('created_at', satuJamLalu) // Klausa WHERE tambahan agar aman
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .select();
+        updateResult = data;
+        dbError = error;
       }
-
-      // EKSEKUSI DENGAN LIMIT 1 AGAR HANYA MENGUBAH 1 BARIS TERBARU
-      const { data: updateResult, error: dbError } = await updateQuery
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .select();
 
       if (dbError) throw new Error(`Database Reject: ${dbError.message}`);
 
-      // 7. Finalisasi
+      // 7. Finalisasi UI
       if (updateResult && updateResult.length > 0) {
         setIsCompleted(true);
         setShowModal(true);
       } else {
-        throw new Error("Sistem tidak menemukan data pendaftaran Anda sama sekali. Pastikan Anda telah mengisi form.");
+        throw new Error("Sistem tidak dapat menemukan data pendaftaran Anda. Pastikan Anda telah mengisi formulir dengan benar.");
       }
 
     } catch (error) {
@@ -109,9 +116,11 @@ export default function SuksesPage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-6 relative overflow-hidden font-sans">
+      {/* Background Decor */}
       <div className="absolute -top-24 -right-24 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl"></div>
       <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-red-500/5 rounded-full blur-3xl"></div>
 
+      {/* Success Modal */}
       {showModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white rounded-[2.5rem] max-w-sm w-full p-8 shadow-2xl relative animate-scaleIn border-[8px] border-indigo-50">
@@ -129,6 +138,7 @@ export default function SuksesPage() {
         </div>
       )}
 
+      {/* Main Card */}
       <div className="max-w-md w-full bg-white rounded-[3rem] shadow-2xl p-10 text-center border-[12px] border-indigo-50/50 relative z-10 animate-scaleIn">
         <div className="flex justify-center mb-6 relative">
           <div className={`p-6 rounded-full transition-all duration-700 ${isCompleted ? 'bg-green-100 scale-110' : 'bg-amber-100 rotate-12'}`}>
@@ -148,9 +158,16 @@ export default function SuksesPage() {
             <label htmlFor="file-upload" className="w-full cursor-pointer group">
               <div className="flex flex-col items-center justify-center bg-white border-2 border-indigo-100 rounded-2xl p-6 transition-all group-hover:border-indigo-400">
                 {uploading ? (
-                  <div className="flex flex-col items-center"><Loader2 className="text-indigo-600 animate-spin mb-2" size={32} /><span className="text-[10px] font-bold text-slate-400 uppercase">Memproses Berkas...</span></div>
+                  <div className="flex flex-col items-center">
+                    <Loader2 className="text-indigo-600 animate-spin mb-2" size={32} />
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">Memproses Berkas...</span>
+                  </div>
                 ) : (
-                  <><Upload className="text-indigo-500 mb-2 group-hover:-translate-y-1 transition-transform" size={32} /><span className="text-sm font-black text-indigo-900 uppercase">KLIK UNTUK UNGGAH</span><p className="text-[9px] text-slate-400 mt-1 font-bold italic underline">FOTO KTP (JPG / PNG)</p></>
+                  <>
+                    <Upload className="text-indigo-500 mb-2 group-hover:-translate-y-1 transition-transform" size={32} />
+                    <span className="text-sm font-black text-indigo-900 uppercase">KLIK UNTUK UNGGAH</span>
+                    <p className="text-[9px] text-slate-400 mt-1 font-bold italic underline">FOTO KTP (JPG / PNG)</p>
+                  </>
                 )}
               </div>
               <input id="file-upload" type="file" className="hidden" accept="image/*" onChange={handleUpload} disabled={uploading} />
@@ -158,7 +175,10 @@ export default function SuksesPage() {
           ) : (
             <div className="flex items-center justify-center gap-4 py-2">
               <div className="bg-emerald-500 text-white p-3 rounded-2xl shadow-lg rotate-3"><FileText size={24} /></div>
-              <div className="text-left"><p className="text-xs font-black text-emerald-800 uppercase">BERKAS MASUK!</p><p className="text-[10px] text-emerald-600 font-bold italic">Terverifikasi oleh Sistem Juara.</p></div>
+              <div className="text-left">
+                <p className="text-xs font-black text-emerald-800 uppercase">BERKAS MASUK!</p>
+                <p className="text-[10px] text-emerald-600 font-bold italic">Terverifikasi oleh Sistem Juara.</p>
+              </div>
             </div>
           )}
         </div>
@@ -174,7 +194,9 @@ export default function SuksesPage() {
                <div className="flex items-center justify-center gap-1.5"><span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-ping"></span><p className="text-[9px] text-rose-500 font-black uppercase italic">Wajib unggah berkas untuk aktivasi tombol</p></div>
             </div>
           )}
-          <a href="#" className="flex items-center justify-center gap-3 w-full py-4 bg-white text-[#1A1A40] border-2 border-slate-100 rounded-2xl font-bold hover:bg-slate-50 transition-all text-sm group"><MessageCircle size={18} className="text-green-500 group-hover:rotate-12 transition-transform" /> HUBUNGI BANTUAN</a>
+          <a href="#" className="flex items-center justify-center gap-3 w-full py-4 bg-white text-[#1A1A40] border-2 border-slate-100 rounded-2xl font-bold hover:bg-slate-50 transition-all text-sm group">
+            <MessageCircle size={18} className="text-green-500 group-hover:rotate-12 transition-transform" /> HUBUNGI BANTUAN
+          </a>
         </div>
         <p className="mt-10 text-[9px] text-slate-300 font-bold uppercase tracking-[0.3em]">Dinas Tenaga Kerja & Perindustrian Kota Madiun</p>
       </div>

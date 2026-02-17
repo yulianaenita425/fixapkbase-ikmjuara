@@ -47,8 +47,13 @@ export default function IKMJuaraFullPage() {
 
         if (error) throw error;
 
-localStorage.setItem("user_registration_id", data[0].id);
-localStorage.setItem("user_name_ikm", data[0].nama_peserta);
+// Di Halaman Form Pendaftaran
+if (data && data.length > 0) {
+  const newId = data[0].id;
+  console.log("ID Baru dari Database:", newId); // Cek di console apakah ini muncul
+  localStorage.setItem("user_registration_id", newId);
+  localStorage.setItem("user_name_ikm", data[0].nama_peserta);
+}
 
         if (data) setDaftarPelatihan(data);
       } catch (error: any) {
