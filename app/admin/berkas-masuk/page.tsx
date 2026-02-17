@@ -40,7 +40,6 @@ export default function BerkasMasukPage() {
       
       setPendaftar(data || []);
       
-      // Mengambil daftar unik nama pelatihan untuk dropdown filter
       if (data) {
         const unik = Array.from(new Set(data.map((item: any) => item.nama_pelatihan)))
           .filter(name => name) as string[];
@@ -69,7 +68,6 @@ export default function BerkasMasukPage() {
     }
   };
 
-  // Logika Filter Ganda: Berdasarkan Search DAN Nama Pelatihan
   const filteredData = pendaftar.filter(item => {
     const matchSearch = 
       (item.nama_peserta?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
@@ -100,7 +98,6 @@ export default function BerkasMasukPage() {
             </div>
             
             <div className="flex flex-wrap gap-3">
-              {/* FILTER PELATIHAN */}
               <div className="relative">
                 <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                 <select 
@@ -115,7 +112,6 @@ export default function BerkasMasukPage() {
                 </select>
               </div>
 
-              {/* SEARCH BOX */}
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                 <input 
@@ -145,16 +141,17 @@ export default function BerkasMasukPage() {
         </div>
 
         {/* MAIN TABLE */}
-        <div className="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/60 overflow-hidden border border-white">
+        <div className="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/60 overflow-hidden border border-slate-200">
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
-                <tr className="bg-slate-50/50 border-b border-slate-100">
-                  <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Profil Pendaftar</th>
-                  <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Informasi Bisnis</th>
-                  <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Pelatihan</th>
-                  <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Status</th>
-                  <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Tindakan</th>
+                {/* OPTIMASI: Latar belakang header digelapkan sedikit dan warna text diubah ke slate-600 agar terlihat */}
+                <tr className="bg-slate-100/80 border-b border-slate-200">
+                  <th className="p-6 text-[11px] font-black text-slate-600 uppercase tracking-[0.2em]">Profil Pendaftar</th>
+                  <th className="p-6 text-[11px] font-black text-slate-600 uppercase tracking-[0.2em]">Informasi Bisnis</th>
+                  <th className="p-6 text-[11px] font-black text-slate-600 uppercase tracking-[0.2em]">Pelatihan</th>
+                  <th className="p-6 text-[11px] font-black text-slate-600 uppercase tracking-[0.2em]">Status</th>
+                  <th className="p-6 text-[11px] font-black text-slate-600 uppercase tracking-[0.2em] text-center">Tindakan</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -209,30 +206,39 @@ export default function BerkasMasukPage() {
                       </td>
                       <td className="p-6">
                         <div className="flex justify-center gap-2">
+                          {/* TOMBOL WHATSAPP */}
                           <a 
                             href={`https://wa.me/${item.no_hp?.replace(/^0/, '62')}`}
                             target="_blank"
+                            rel="noopener noreferrer"
                             className="p-3 bg-white border border-slate-100 text-green-500 rounded-xl hover:bg-green-500 hover:text-white transition-all shadow-sm"
                             title="Hubungi WhatsApp"
                           >
                             <ExternalLink size={18} />
                           </a>
                           
+                          {/* OPTIMASI TOMBOL BERKAS: Sekarang memberikan feedback jika diklik saat data kosong */}
                           {item.foto ? (
                             <a 
                               href={item.foto} 
                               target="_blank" 
+                              rel="noopener noreferrer"
                               className="p-3 bg-white border border-slate-100 text-indigo-500 rounded-xl hover:bg-indigo-500 hover:text-white transition-all shadow-sm"
                               title="Lihat Berkas"
                             >
                               <FileText size={18} />
                             </a>
                           ) : (
-                            <button disabled className="p-3 bg-slate-50 text-slate-200 rounded-xl cursor-not-allowed">
+                            <button 
+                              onClick={() => alert("Peserta ini belum mengunggah file berkas/foto.")}
+                              className="p-3 bg-slate-50 text-slate-300 border border-slate-100 rounded-xl cursor-help"
+                              title="Berkas Tidak Tersedia"
+                            >
                               <FileText size={18} />
                             </button>
                           )}
 
+                          {/* TOMBOL HAPUS */}
                           <button 
                             onClick={() => handleDelete(item.id, item.nama_peserta)}
                             className="p-3 bg-white border border-slate-100 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all shadow-sm"
