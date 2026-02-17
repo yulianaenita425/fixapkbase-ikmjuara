@@ -25,13 +25,18 @@ export default function SuksesPage() {
     setUploading(true);
 
     try {
-      // 1. Kompresi Gambar Otomatis (Maks 200KB)
+      // 1. Kompresi Gambar (Optimasi ukuran file)
       if (file.type.startsWith("image/")) {
         const options = { maxSizeMB: 0.2, maxWidthOrHeight: 1280, useWebWorker: true };
-        try { file = await imageCompression(file, options); } catch (err) { console.error("Gagal kompresi:", err); }
+        try { 
+          const compressedFile = await imageCompression(file, options); 
+          file = compressedFile;
+        } catch (err) { 
+          console.error("Gagal kompresi:", err); 
+        }
       }
 
-      // 2. Persiapan Nama File
+      // 2. Persiapan Path (Folder dokumen_pendaftar)
       const fileExt = file.name.split('.').pop();
       const cleanName = userName.trim().replace(/\s+/g, '-').toLowerCase();
       const fileName = `${cleanName}-${Date.now()}.${fileExt}`;
@@ -42,35 +47,40 @@ export default function SuksesPage() {
         .from('berkas-ikm') 
         .upload(filePath, file);
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        throw new Error(`Gagal Simpan File ke Storage: ${uploadError.message}`);
+      }
 
-      // 4. Ambil Link Public URL
+      // 4. Ambil Public URL
       const { data: publicUrlData } = supabase.storage.from('berkas-ikm').getPublicUrl(filePath);
       const publicUrl = publicUrlData.publicUrl;
 
-      // 5. UPDATE DATABASE (LOGIKA PALING AMAN)
-      // Mencari baris terbaru di tabel list_tunggu_peserta untuk diisi fotonya
+      // 5. UPDATE DATABASE (Membutuhkan Policy UPDATE pada tabel)
       const { data: updateResult, error: dbError } = await supabase
         .from('list_tunggu_peserta')
         .update({ foto: publicUrl })
-        .order('created_at', { ascending: false }) // Ambil pendaftaran terakhir
+        .order('created_at', { ascending: false }) // Menargetkan baris terbaru
         .limit(1)
         .select();
 
-      if (dbError) throw dbError;
+      if (dbError) {
+        // Pesan spesifik jika RLS Policy UPDATE belum diatur
+        throw new Error(`Gagal Update Database: ${dbError.message}`);
+      }
 
-      // CEK APAKAH UPDATE BERHASIL
+      // 6. Validasi & Aktivasi Fitur Halaman
       if (updateResult && updateResult.length > 0) {
         console.log("Sinkronisasi Berhasil:", updateResult);
-        setIsCompleted(true); // MENGAKTIFKAN TOMBOL TENGAH & KELUAR
-        setShowModal(true);   // MEMUNCULKAN POP-UP SUKSES
+        setIsCompleted(true); // Mengaktifkan tombol SELESAI & FileText icon
+        setShowModal(true);   // Memunculkan Pop-up Berhasil
       } else {
-        alert("⚠️ Wadah database kosong. Silakan kembali ke formulir dan daftar terlebih dahulu.");
+        throw new Error("Data pendaftaran tidak ditemukan. Pastikan Anda sudah mengisi formulir sebelumnya.");
       }
 
     } catch (error) {
-      console.error("Error Detail:", error);
-      alert("Terjadi kesalahan teknis saat mengunggah berkas.");
+      console.error("Detail Error:", error);
+      // Alert informatif dengan pesan asli dari server/logika
+      alert(`⚠️ ${error.message}`);
     } finally {
       setUploading(false);
     }
@@ -83,7 +93,7 @@ export default function SuksesPage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-6 relative overflow-hidden font-sans">
-      {/* Background Decorative */}
+      {/* Dekorasi Background */}
       <div className="absolute -top-24 -right-24 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl"></div>
       <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-red-500/5 rounded-full blur-3xl"></div>
 
@@ -172,7 +182,7 @@ export default function SuksesPage() {
           )}
         </div>
 
-        {/* Action Buttons */}
+        {/* Tombol Aksi */}
         <div className="space-y-4">
           {isCompleted ? (
             <button 
