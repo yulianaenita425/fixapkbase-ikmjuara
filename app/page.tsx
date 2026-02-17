@@ -6,7 +6,7 @@ import {
   ShieldCheck, TrendingUp, Globe, Award, 
   MessageCircle, ArrowRight, User, Hash, 
   ShoppingBag, MapPin, Briefcase, CheckCircle2, Volume2,
-  Check, Star, Rocket, Zap
+  Check, Star, Rocket, Zap, FileText, Fingerprint, Info
 } from 'lucide-react'; 
 import { supabase } from '../lib/supabaseClient'; 
 import { useNotification } from './hooks/useNotification';
@@ -32,6 +32,9 @@ export default function IKMJuaraFullPage() {
   const [showPelatihanList, setShowPelatihanList] = useState(false);
   const [loadingTamu, setLoadingTamu] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Fitur Baru: Progress Tracking untuk Form
+  const [formProgress, setFormProgress] = useState(0);
 
   useEffect(() => {
     const fetchPelatihan = async () => {
@@ -62,31 +65,30 @@ export default function IKMJuaraFullPage() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // --- FUNGSI TAMBAHAN: KIRIM EMAIL NOTIFIKASI ---
   const sendEmailNotification = async (data: any) => {
     try {
-      // GANTI 'YOUR_RESEND_API_KEY' dengan API Key dari resend.com
-      // GANTI 'email-admin@gmail.com' dengan email Anda
       await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer re_FQme37xu_BPAfDvRmaYiz47oH7GshBqfi`, // Masukkan API Key Resend di sini
+          'Authorization': `Bearer re_FQme37xu_BPAfDvRmaYiz47oH7GshBqfi`, 
         },
         body: JSON.stringify({
           from: 'Sistem IKM Juara <onboarding@resend.dev>',
           to: ['email-admin-anda@gmail.com'], 
           subject: `🚨 PENDAFTAR BARU: ${data.nama_usaha}`,
           html: `
-            <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-              <h2 style="color: #1A1A40;">Ada Pendaftaran IKM Baru!</h2>
-              <p><strong>Nama Pemilik:</strong> ${data.nama_lengkap}</p>
-              <p><strong>Nama Usaha:</strong> ${data.nama_usaha}</p>
-              <p><strong>Produk:</strong> ${data.produk_utama}</p>
-              <p><strong>Layanan:</strong> ${data.layanan_prioritas}</p>
-              <p><strong>WhatsApp:</strong> ${data.no_hp}</p>
-              <hr />
-              <p style="font-size: 12px; color: #666;">Notifikasi otomatis Sistem IKM Juara v2.0</p>
+            <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px; background-color: #f9f9f9;">
+              <h2 style="color: #1A1A40; border-bottom: 2px solid #1A1A40; padding-bottom: 10px;">Ada Pendaftaran IKM Baru!</h2>
+              <div style="padding: 15px; background: white; border-radius: 8px;">
+                <p><strong>Nama Pemilik:</strong> ${data.nama_lengkap}</p>
+                <p><strong>Nama Usaha:</strong> ${data.nama_usaha}</p>
+                <p><strong>Produk:</strong> ${data.produk_utama}</p>
+                <p><strong>Layanan:</strong> ${data.layanan_prioritas}</p>
+                <p><strong>WhatsApp:</strong> <a href="https://wa.me/${data.no_hp}">${data.no_hp}</a></p>
+              </div>
+              <hr style="margin-top: 20px;" />
+              <p style="font-size: 12px; color: #666; text-align: center;">Notifikasi otomatis Sistem IKM Juara v2.0 - Kota Madiun</p>
             </div>
           `,
         }),
@@ -96,10 +98,10 @@ export default function IKMJuaraFullPage() {
     }
   };
 
-const handlePendaftaran = async (formData: FormData) => {
+  const handlePendaftaran = async (formData: FormData) => {
     setIsSubmitting(true);
     const subPelatihanSelected = formData.get("sub_pelatihan") as string;
-    const layananValue = formData.get("layanan") as string; // Tambahan: ambil value layanan
+    const layananValue = formData.get("layanan") as string;
 
     if (layanan === "Pelatihan Pemberdayaan IKM" && layananDetail && layananDetail.kuota <= 0) {
       alert("Maaf, kuota untuk pelatihan ini sudah habis.");
@@ -107,7 +109,6 @@ const handlePendaftaran = async (formData: FormData) => {
       return;
     }
 
-    // --- OPTIMALISASI RAW DATA ---
     const rawData = {
       nama_lengkap: formData.get("nama"),
       no_hp: formData.get("hp"),
@@ -116,19 +117,16 @@ const handlePendaftaran = async (formData: FormData) => {
       nama_usaha: formData.get("nama_usaha"),
       produk_utama: formData.get("produk"),
       alamat_usaha: formData.get("alamat"),
-      layanan_prioritas: layananValue, // Sesuai dengan kolom di Supabase Anda
-      // Tambahkan baris di bawah ini sebagai pengaman jika ada trigger database yang mencari 'jenis_layanan'
+      layanan_prioritas: layananValue, 
       jenis_layanan: layananValue, 
       sub_pelatihan: subPelatihanSelected || null,
+      created_at: new Date().toISOString(),
     };
 
     try {
-      // Kita coba insert. Jika Supabase menolak karena field 'jenis_layanan' tidak ada di table, 
-      // kita lakukan fallback otomatis hanya mengirim 'layanan_prioritas'.
       const { error: insertError } = await supabase.from("ikm_register").insert([rawData]);
       
       if (insertError) {
-        // Fallback: Jika error karena kolom 'jenis_layanan' benar-benar tidak ada di skema table
         if (insertError.message.includes("jenis_layanan")) {
            const fallbackData = { ...rawData };
            delete (fallbackData as any).jenis_layanan;
@@ -139,11 +137,14 @@ const handlePendaftaran = async (formData: FormData) => {
         }
       }
 
-      // --- PEMANGGILAN NOTIFIKASI EMAIL SETELAH BERHASIL INSERT ---
       await sendEmailNotification(rawData);
-
       showNotification("PENDAFTARAN BERHASIL DISIMPAN!"); 
-      setTimeout(() => { window.location.reload(); }, 2000);
+      
+      // Feedback suara sukses (opsional)
+      const msg = new SpeechSynthesisUtterance("Pendaftaran berhasil disimpan. Terima kasih.");
+      window.speechSynthesis.speak(msg);
+
+      setTimeout(() => { window.location.href = '/sukses'; }, 2000);
     } catch (error: any) {
       console.error("Full Error Debug:", error);
       alert("Gagal menyimpan: " + (error.message || "Terjadi kesalahan koneksi"));
@@ -165,6 +166,15 @@ const handlePendaftaran = async (formData: FormData) => {
     e.target.value = numericValue;
     const errorMsg = validateInput(name, numericValue);
     setErrors(prev => ({ ...prev, [name]: errorMsg }));
+
+    // Update Progress Bar secara sederhana
+    const form = (e.target as any).form;
+    const totalFields = 7; 
+    let filledFields = 0;
+    ['nama', 'hp', 'nib', 'nik', 'nama_usaha', 'produk', 'alamat'].forEach(f => {
+        if(form[f]?.value) filledFields++;
+    });
+    setFormProgress((filledFields / totalFields) * 100);
   };
 
   const handleLayananChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -176,6 +186,7 @@ const handlePendaftaran = async (formData: FormData) => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] overflow-x-hidden text-[#1A1A40]">
+      {/* NOTIFICATION TOAST */}
       {toast?.show && (
         <div className="fixed top-10 left-1/2 -translate-x-1/2 z-[300] animate-scaleIn">
           <div className="bg-[#1A1A40] text-white px-8 py-4 rounded-2xl shadow-2xl border-2 border-indigo-500 flex items-center gap-4">
@@ -191,6 +202,7 @@ const handlePendaftaran = async (formData: FormData) => {
         </div>
       )}
 
+      {/* NAVBAR */}
       <nav className={`fixed w-full z-[100] transition-all duration-500 ${scrolled ? "py-3 bg-[#1A1A40]/90 backdrop-blur-xl shadow-2xl" : "py-6 bg-transparent"}`}>
         <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
           <div className="flex items-center gap-3 group cursor-pointer">
@@ -213,7 +225,7 @@ const handlePendaftaran = async (formData: FormData) => {
       <section className="relative min-h-screen flex items-center pt-20">
         <div className="absolute top-0 right-0 w-[50%] h-[80%] bg-gradient-to-bl from-indigo-100/50 to-transparent rounded-bl-[200px] -z-10" />
         <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-12 items-center">
-          <div>
+          <div className="animate-scaleIn">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white shadow-sm border border-slate-100 mb-6 animate-bounce-slow">
               <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
               <span className="text-xs font-black uppercase tracking-[0.2em] text-slate-500 font-mono">System Active: IKM JUARA v2.0</span>
@@ -223,12 +235,22 @@ const handlePendaftaran = async (formData: FormData) => {
                 <div className="w-16 h-16">{animationData && <Lottie animationData={animationData} loop={true} />}</div>
                 <p className="text-sm font-semibold text-slate-600 italic">"Mendorong efisiensi dan jaminan usaha industri Kota Madiun."</p>
             </div>
-            <a href="#form-pendaftaran" className="inline-flex px-10 py-5 bg-[#1A1A40] text-white rounded-2xl font-bold shadow-xl hover:-translate-y-1 transition-all items-center gap-3">MULAI DAFTAR SEKARANG <ArrowRight size={20}/></a>
+            <div className="flex flex-wrap gap-4">
+              <a href="#form-pendaftaran" className="inline-flex px-10 py-5 bg-[#1A1A40] text-white rounded-2xl font-bold shadow-xl hover:-translate-y-1 transition-all items-center gap-3">MULAI DAFTAR SEKARANG <ArrowRight size={20}/></a>
+              <div className="flex -space-x-3 items-center">
+                  {[1,2,3,4].map(i => (
+                    <div key={i} className="w-10 h-10 rounded-full border-2 border-white bg-slate-200 flex items-center justify-center overflow-hidden">
+                       <User size={20} className="text-slate-400" />
+                    </div>
+                  ))}
+                  <span className="pl-5 text-xs font-bold text-slate-400">+500 IKM Terdaftar</span>
+              </div>
+            </div>
           </div>
           <div className="relative flex justify-center items-center">
             <div className="absolute w-[120%] h-[120%] bg-indigo-500/10 rounded-full blur-[120px] animate-pulse"></div>
             <div className="relative z-10 p-6 bg-white rounded-[4rem] shadow-2xl border-4 border-white transform transition-transform hover:scale-[1.02]">
-              <Image src="/Laura joss.png" alt="Logo IKM JUARA" width={450} height={450} className="rounded-[3rem]" />
+              <Image src="/Laura joss.png" alt="Logo IKM JUARA" width={450} height={450} className="rounded-[3rem]" priority />
             </div>
           </div>
         </div>
@@ -271,28 +293,29 @@ const handlePendaftaran = async (formData: FormData) => {
               </div>
             </div>
 
-            <div className="bg-[#1A1A40] p-10 rounded-[3rem] text-white shadow-3xl relative">
-              <div className="absolute -top-6 -right-6 w-20 h-20 bg-yellow-400 rounded-2xl rotate-12 flex items-center justify-center shadow-xl">
+            <div className="bg-[#1A1A40] p-10 rounded-[3rem] text-white shadow-3xl relative group">
+              <div className="absolute -top-6 -right-6 w-20 h-20 bg-yellow-400 rounded-2xl rotate-12 flex items-center justify-center shadow-xl group-hover:rotate-0 transition-transform">
                 <Star size={40} className="text-[#1A1A40] animate-pulse" />
               </div>
               <h4 className="text-2xl font-black mb-8 border-b border-white/10 pb-4">Layanan Terpadu Kami:</h4>
               <ul className="space-y-6">
-                <li className="flex gap-4">
-                  <div className="mt-1"><Rocket size={20} className="text-indigo-400" /></div>
+                <li className="flex gap-4 group/item">
+                  <div className="mt-1 group-hover/item:scale-125 transition-transform"><Rocket size={20} className="text-indigo-400" /></div>
                   <p className="text-sm leading-relaxed"><span className="font-bold text-indigo-300">Pendampingan Legalitas:</span> Perlindungan usaha secara menyeluruh dan bantuan sertifikasi produk.</p>
                 </li>
-                <li className="flex gap-4">
-                  <div className="mt-1"><Zap size={20} className="text-yellow-400" /></div>
+                <li className="flex gap-4 group/item">
+                  <div className="mt-1 group-hover/item:scale-125 transition-transform"><Zap size={20} className="text-yellow-400" /></div>
                   <p className="text-sm leading-relaxed"><span className="font-bold text-yellow-300">Produktivitas & Efisiensi:</span> Optimalisasi proses produksi melalui inovasi teknologi dan manajemen modern.</p>
                 </li>
-                <li className="flex gap-4">
-                  <div className="mt-1"><Award size={20} className="text-green-400" /></div>
+                <li className="flex gap-4 group/item">
+                  <div className="mt-1 group-hover/item:scale-125 transition-transform"><Award size={20} className="text-green-400" /></div>
                   <p className="text-sm leading-relaxed"><span className="font-bold text-green-300">Penguatan Daya Saing:</span> Branding, desain kreatif, serta akses pasar digital hingga kancah internasional.</p>
                 </li>
               </ul>
-              <div className="mt-10 p-4 bg-white/5 rounded-2xl border border-white/10">
+              <div className="mt-10 p-4 bg-white/5 rounded-2xl border border-white/10 flex items-center gap-3">
+                <Info size={18} className="text-indigo-300 shrink-0" />
                 <p className="text-xs italic text-slate-300 leading-relaxed">
-                  Didukung oleh tenaga ahli dan fasilitator berpengalaman untuk mendorong pelaku usaha menjadi lebih mandiri dan kompetitif.
+                  Didukung oleh tenaga ahli dan fasilitator berpengalaman untuk mendorong pelaku usaha menjadi lebih mandiri.
                 </p>
               </div>
             </div>
@@ -303,6 +326,11 @@ const handlePendaftaran = async (formData: FormData) => {
       {/* FORM PENDAFTARAN */}
       <section id="form-pendaftaran" className="py-24 px-6 bg-[#1A1A40]">
         <div className="max-w-4xl mx-auto bg-white rounded-[3rem] shadow-3xl overflow-hidden border-[12px] border-white/10">
+          {/* Progress Bar Fitur Baru */}
+          <div className="w-full h-2 bg-slate-100">
+            <div className="h-full bg-indigo-600 transition-all duration-500" style={{ width: `${formProgress}%` }}></div>
+          </div>
+
           <div className="p-10 bg-slate-50 border-b text-center">
             <div className="inline-block p-4 bg-indigo-600 text-white rounded-2xl mb-4 shadow-xl shadow-indigo-200"><Briefcase size={32} /></div>
             <h2 className="text-3xl font-black text-[#1A1A40] uppercase tracking-tighter">Formulir Pendaftaran Binaan</h2>
@@ -313,19 +341,19 @@ const handlePendaftaran = async (formData: FormData) => {
             <div className="grid md:grid-cols-2 gap-8">
               <div className="space-y-3">
                 <label className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2"><User size={14}/> Nama Lengkap</label>
-                <input name="nama" type="text" required className="w-full p-4 bg-slate-50 border-2 border-transparent focus:border-indigo-600 rounded-2xl outline-none font-bold transition-all shadow-inner" placeholder="Sesuai KTP" />
+                <input name="nama" type="text" required onChange={handleNumericInput} className="w-full p-4 bg-slate-50 border-2 border-transparent focus:border-indigo-600 rounded-2xl outline-none font-bold transition-all shadow-inner" placeholder="Sesuai KTP" />
               </div>
               <div className="space-y-3">
                 <label className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2"><Hash size={14}/> No. WhatsApp</label>
                 <input name="hp" type="text" onChange={handleNumericInput} required className="w-full p-4 bg-slate-50 border-2 border-transparent focus:border-indigo-600 rounded-2xl outline-none font-bold transition-all shadow-inner" placeholder="08..." />
               </div>
               <div className="space-y-3">
-                <label className="text-xs font-black uppercase tracking-widest text-slate-400">No. NIB (13 Digit)</label>
+                <label className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2"><FileText size={14}/> No. NIB (13 Digit)</label>
                 <input name="nib" type="text" maxLength={13} onChange={handleNumericInput} required className={`w-full p-4 bg-slate-50 border-2 ${errors.nib ? 'border-red-500' : 'border-transparent focus:border-indigo-600'} rounded-2xl outline-none font-bold transition-all shadow-inner`} placeholder="Input 13 Angka" />
                 {errors.nib && <p className="text-red-500 text-[10px] font-bold uppercase tracking-widest">{errors.nib}</p>}
               </div>
               <div className="space-y-3">
-                <label className="text-xs font-black uppercase tracking-widest text-slate-400">No. NIK (16 Digit)</label>
+                <label className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2"><Fingerprint size={14}/> No. NIK (16 Digit)</label>
                 <input name="nik" type="text" maxLength={16} onChange={handleNumericInput} required className={`w-full p-4 bg-slate-50 border-2 ${errors.nik ? 'border-red-500' : 'border-transparent focus:border-indigo-600'} rounded-2xl outline-none font-bold transition-all shadow-inner`} placeholder="Input 16 Angka" />
                 {errors.nik && <p className="text-red-500 text-[10px] font-bold uppercase tracking-widest">{errors.nik}</p>}
               </div>
@@ -334,31 +362,36 @@ const handlePendaftaran = async (formData: FormData) => {
             <div className="grid md:grid-cols-2 gap-8">
               <div className="space-y-3">
                 <label className="text-xs font-black uppercase tracking-widest text-slate-400">Nama Usaha</label>
-                <input name="nama_usaha" type="text" required className="w-full p-4 bg-slate-50 border-2 border-transparent focus:border-indigo-600 rounded-2xl outline-none font-bold transition-all shadow-inner" />
+                <input name="nama_usaha" type="text" required onChange={handleNumericInput} className="w-full p-4 bg-slate-50 border-2 border-transparent focus:border-indigo-600 rounded-2xl outline-none font-bold transition-all shadow-inner" />
               </div>
               <div className="space-y-3">
                 <label className="text-xs font-black uppercase tracking-widest text-slate-400 italic">Produk Utama</label>
-                <input name="produk" type="text" required className="w-full p-4 bg-slate-50 border-2 border-transparent focus:border-indigo-600 rounded-2xl outline-none font-bold transition-all shadow-inner" placeholder="Contoh: Sambal Pecel" />
+                <input name="produk" type="text" required onChange={handleNumericInput} className="w-full p-4 bg-slate-50 border-2 border-transparent focus:border-indigo-600 rounded-2xl outline-none font-bold transition-all shadow-inner" placeholder="Contoh: Sambal Pecel" />
               </div>
             </div>
 
             <div className="space-y-3">
               <label className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2"><MapPin size={14}/> Alamat Usaha Lengkap</label>
-              <textarea name="alamat" rows={2} required className="w-full p-4 bg-slate-50 border-2 border-transparent focus:border-indigo-600 rounded-2xl outline-none font-bold transition-all shadow-inner"></textarea>
+              <textarea name="alamat" rows={2} required onChange={handleNumericInput} className="w-full p-4 bg-slate-50 border-2 border-transparent focus:border-indigo-600 rounded-2xl outline-none font-bold transition-all shadow-inner"></textarea>
             </div>
 
             <div className="space-y-3 pt-6 border-t border-slate-100">
               <label className="text-xs font-black uppercase tracking-widest text-indigo-600">Layanan yang Diperlukan</label>
-              <select name="layanan" onChange={handleLayananChange} required className="w-full p-5 bg-indigo-50 border-2 border-indigo-100 rounded-2xl outline-none font-black text-indigo-900 appearance-none cursor-pointer">
-                <option value="">-- Pilih Layanan Utama --</option>
-                <option value="Pendaftaran HKI Merek">Pendaftaran HKI Merek</option>
-                <option value="Pendaftaran Sertifikat Halal">Pendaftaran Sertifikat Halal</option>
-                <option value="Pendaftaran TKDN IK">Pendaftaran TKDN IK</option>
-                <option value="Pendaftaran dan Pendampingan SIINas">Pendaftaran dan Pendampingan SIINas</option>
-                <option value="Pendaftaran Uji Nilai Gizi">Pendaftaran Uji Nilai Gizi</option>
-                <option value="Kurasi Produk">Kurasi Produk</option>
-                <option value="Pelatihan Pemberdayaan IKM">Pelatihan Pemberdayaan IKM</option>
-              </select>
+              <div className="relative">
+                <select name="layanan" onChange={handleLayananChange} required className="w-full p-5 bg-indigo-50 border-2 border-indigo-100 rounded-2xl outline-none font-black text-indigo-900 appearance-none cursor-pointer">
+                  <option value="">-- Pilih Layanan Utama --</option>
+                  <option value="Pendaftaran HKI Merek">Pendaftaran HKI Merek</option>
+                  <option value="Pendaftaran Sertifikat Halal">Pendaftaran Sertifikat Halal</option>
+                  <option value="Pendaftaran TKDN IK">Pendaftaran TKDN IK</option>
+                  <option value="Pendaftaran dan Pendampingan SIINas">Pendaftaran dan Pendampingan SIINas</option>
+                  <option value="Pendaftaran Uji Nilai Gizi">Pendaftaran Uji Nilai Gizi</option>
+                  <option value="Kurasi Produk">Kurasi Produk</option>
+                  <option value="Pelatihan Pemberdayaan IKM">Pelatihan Pemberdayaan IKM</option>
+                </select>
+                <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none">
+                   <Zap size={20} className="text-indigo-400" />
+                </div>
+              </div>
             </div>
 
             {showPelatihanList && (
@@ -395,7 +428,9 @@ const handlePendaftaran = async (formData: FormData) => {
                       {layananDetail.deskripsi || "Tidak ada deskripsi tersedia."}
                     </p>
                     <div className="flex gap-3">
-                      <span className="text-[9px] bg-orange-200 px-2 py-1 rounded font-bold text-orange-800 uppercase">Jadwal: {layananDetail.jadwal}</span>
+                      <span className="text-[9px] bg-orange-200 px-2 py-1 rounded font-bold text-orange-800 uppercase flex items-center gap-1">
+                        <Star size={10} /> Jadwal: {layananDetail.jadwal}
+                      </span>
                       <span className={`text-[9px] px-2 py-1 rounded font-bold uppercase ${layananDetail.kuota > 0 ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`}>
                         Kuota: {layananDetail.kuota}
                       </span>
@@ -419,89 +454,94 @@ const handlePendaftaran = async (formData: FormData) => {
                 isSubmitting || 
                 (layanan === "Pelatihan Pemberdayaan IKM" && (!layananDetail || layananDetail.kuota <= 0))
               } 
-              className="w-full py-6 bg-[#1A1A40] text-white rounded-[2rem] font-black tracking-[0.2em] shadow-2xl hover:bg-indigo-600 hover:-translate-y-1 disabled:bg-slate-300 transition-all uppercase"
+              className="w-full py-6 bg-[#1A1A40] text-white rounded-[2rem] font-black tracking-[0.2em] shadow-2xl hover:bg-indigo-600 hover:-translate-y-1 disabled:bg-slate-300 transition-all uppercase flex justify-center items-center gap-3 group"
             >
-              {isSubmitting ? "Sedang Mengirim..." : (layanan === "Pelatihan Pemberdayaan IKM" && layananDetail && layananDetail.kuota <= 0) ? "KUOTA PENUH" : "Kirim Data Binaan & Daftar JUARA"}
+              {isSubmitting ? "Sedang Mengirim..." : (layanan === "Pelatihan Pemberdayaan IKM" && layananDetail && layananDetail.kuota <= 0) ? "KUOTA PENUH" : (
+                <>
+                   Kirim Data Binaan & Daftar JUARA
+                   <Rocket size={20} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                </>
+              )}
             </button>
           </form>
         </div>
       </section>
 
-{/* MODAL BUKU TAMU */}
-{showModal && (
-  <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-[#1A1A40]/40 backdrop-blur-md">
-    <div className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-3xl p-10 relative animate-scaleIn">
-      <button onClick={() => setShowModal(false)} className="absolute top-6 right-8 text-slate-400 hover:text-[#1A1A40] font-black text-2xl">×</button>
-      <div className="text-center mb-8">
-        <h3 className="text-3xl font-black italic uppercase tracking-tighter">Buku Tamu</h3>
-        <p className="text-slate-500 text-sm font-bold mt-2">Identitas Pengakses Sistem IKM JUARA</p>
-      </div>
-      <form onSubmit={async (e) => {
-          e.preventDefault();
-          setLoadingTamu(true);
-          const target = e.target as any;
-          const namaTamu = target.nama.value; // Ambil nama untuk disimpan
-          const dataTamu = {
-            nama: namaTamu,
-            whatsapp: target.whatsapp.value,
-            alamat: target.alamat.value,
-            waktu_kunjungan: new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })
-          };
-
-          try {
-            // 1. Simpan ke tabel buku_tamu
-            const { error } = await supabase.from("buku_tamu").insert([dataTamu]);
-            
-            // 2. Tambahan: Catat ke activity_logs agar nama terekam sebagai 'username'
-            await supabase.from("activity_logs").insert([{
-              role: "user",
-              username: namaTamu, // Nama pengakses masuk ke kolom username
-              action_type: "pencarian",
-              description: `Pencarian BERHASIL oleh ${namaTamu}`
-            }]);
-
-            // 3. Simpan di local storage agar halaman /pencarian bisa mengenali user ini
-            localStorage.setItem("user_name_ikm", namaTamu);
-
-            if (error) throw error;
-            showNotification("AKSES DATA DIBERIKAN!");
-            setTimeout(() => { window.location.href = '/pencarian'; }, 1500);
-          } catch (err) {
-            window.location.href = '/pencarian';
-          } finally {
-            setLoadingTamu(false);
-          }
-        }} className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Nama Pengunjung</label>
-                <input name="nama" required type="text" placeholder="Nama Lengkap" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold shadow-inner focus:border-indigo-500 border-2 border-transparent transition-all" />
+      {/* MODAL BUKU TAMU */}
+      {showModal && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-[#1A1A40]/40 backdrop-blur-md animate-scaleIn">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-3xl p-10 relative">
+            <button onClick={() => setShowModal(false)} className="absolute top-6 right-8 text-slate-400 hover:text-[#1A1A40] font-black text-2xl transition-colors">×</button>
+            <div className="text-center mb-8">
+              <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                 <User size={40} className="text-indigo-600" />
               </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Nomor WhatsApp</label>
-                <input name="whatsapp" required type="text" onChange={handleNumericInput} placeholder="0812xxxx" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold shadow-inner focus:border-indigo-500 border-2 border-transparent transition-all" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Alamat / Instansi</label>
-                <textarea name="alamat" required placeholder="Contoh: Jl. Pahlawan No. 1, Kota Madiun" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold shadow-inner h-24 focus:border-indigo-500 border-2 border-transparent transition-all" />
-              </div>
-              <button type="submit" disabled={loadingTamu} className="w-full py-5 bg-[#1A1A40] text-white rounded-2xl font-black uppercase tracking-widest shadow-xl hover:bg-indigo-600 transition-all disabled:bg-slate-400 flex justify-center items-center gap-2 mt-4">
-                {loadingTamu ? "MENCATAT..." : "MASUK KE DATABASE IKM"}
-              </button>
-            </form>
+              <h3 className="text-3xl font-black italic uppercase tracking-tighter">Buku Tamu</h3>
+              <p className="text-slate-500 text-sm font-bold mt-2">Identitas Pengakses Sistem IKM JUARA</p>
+            </div>
+            <form onSubmit={async (e) => {
+                e.preventDefault();
+                setLoadingTamu(true);
+                const target = e.target as any;
+                const namaTamu = target.nama.value; 
+                const dataTamu = {
+                  nama: namaTamu,
+                  whatsapp: target.whatsapp.value,
+                  alamat: target.alamat.value,
+                  waktu_kunjungan: new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })
+                };
+
+                try {
+                  const { error } = await supabase.from("buku_tamu").insert([dataTamu]);
+                  await supabase.from("activity_logs").insert([{
+                    role: "user",
+                    username: namaTamu,
+                    action_type: "pencarian",
+                    description: `Pencarian BERHASIL oleh ${namaTamu}`
+                  }]);
+
+                  localStorage.setItem("user_name_ikm", namaTamu);
+                  if (error) throw error;
+                  showNotification("AKSES DATA DIBERIKAN!");
+                  setTimeout(() => { window.location.href = '/pencarian'; }, 1500);
+                } catch (err) {
+                  window.location.href = '/pencarian';
+                } finally {
+                  setLoadingTamu(false);
+                }
+              }} className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Nama Pengunjung</label>
+                  <input name="nama" required type="text" placeholder="Nama Lengkap" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold shadow-inner focus:border-indigo-500 border-2 border-transparent transition-all" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Nomor WhatsApp</label>
+                  <input name="whatsapp" required type="text" onChange={handleNumericInput} placeholder="0812xxxx" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold shadow-inner focus:border-indigo-500 border-2 border-transparent transition-all" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Alamat / Instansi</label>
+                  <textarea name="alamat" required placeholder="Contoh: Jl. Pahlawan No. 1, Kota Madiun" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold shadow-inner h-24 focus:border-indigo-500 border-2 border-transparent transition-all" />
+                </div>
+                <button type="submit" disabled={loadingTamu} className="w-full py-5 bg-[#1A1A40] text-white rounded-2xl font-black uppercase tracking-widest shadow-xl hover:bg-indigo-600 transition-all disabled:bg-slate-400 flex justify-center items-center gap-2 mt-4">
+                  {loadingTamu ? "MENCATAT..." : "MASUK KE DATABASE IKM"}
+                </button>
+              </form>
+            </div>
           </div>
-        </div>
       )}
 
+      {/* FOOTER */}
       <footer className="py-16 text-center bg-white border-t border-slate-100">
-        <blockquote className="text-slate-400 italic text-xl font-serif max-w-2xl mx-auto px-6 mb-8">
+        <blockquote className="text-slate-400 italic text-xl font-serif max-w-2xl mx-auto px-6 mb-8 relative">
+          <span className="text-6xl text-indigo-100 absolute -top-8 -left-4 font-serif">"</span>
           "Dengan semangat Juara, setiap IKM di Madiun akan menjadi pelaku industri yang tak hanya tumbuh, tapi juga menginspirasi."
         </blockquote>
         <div className="flex justify-center gap-6 text-xs font-black uppercase tracking-[0.2em] text-slate-400">
-          <a href="/privacy" className="hover:text-indigo-600 transition-colors">Privacy</a>
+          <a href="/privacy" className="hover:text-indigo-600 transition-colors">Privacy Policy</a>
           <span className="text-slate-200">•</span>
-          <a href="/support" className="hover:text-indigo-600 transition-colors">Support</a>
+          <a href="/support" className="hover:text-indigo-600 transition-colors">Support Center</a>
         </div>
-        <p className="mt-4 text-[10px] text-slate-300 font-bold uppercase tracking-widest">© 2026 E-Government Kota Madiun</p>
+        <p className="mt-4 text-[10px] text-slate-300 font-bold uppercase tracking-widest">© 2026 E-Government Kota Madiun • Built with Juara Spirit</p>
       </footer>
 
       <style jsx global>{`
@@ -514,6 +554,12 @@ const handlePendaftaran = async (formData: FormData) => {
         .animate-bounce-slow { animation: bounce 3s infinite; }
         @keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
         .animate-scaleIn { animation: scaleIn 0.3s ease-out forwards; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #1A1A40; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #4f46e5; }
       `}</style>
     </div>
   );
