@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { CheckCircle, Home, MessageCircle, Upload, FileText, Loader2, AlertCircle, UserCheck } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
+import imageCompression from "browser-image-compression"; // Import library kompresi
 
 export default function SuksesPage() {
   const [uploading, setUploading] = useState(false);
@@ -19,21 +20,39 @@ export default function SuksesPage() {
   }, []);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    let file = e.target.files?.[0];
     if (!file) return;
-
-    // Validasi Ukuran: 2MB
-    if (file.size > 2 * 1024 * 1024) {
-      alert("⚠️ File terlalu besar! Maksimal 2MB agar sistem tetap cepat.");
-      return;
-    }
 
     setUploading(true);
     setStatus("idle");
 
     try {
+      // PROSES KOMPRESI OTOMATIS (Jika file adalah gambar)
+      if (file.type.startsWith("image/")) {
+        const options = {
+          maxSizeMB: 0.24, // Maksimal 245KB agar aman di bawah 250KB
+          maxWidthOrHeight: 1280, // Resolusi maksimal HD
+          useWebWorker: true,
+        };
+        
+        try {
+          console.log(`Ukuran awal: ${file.size / 1024} KB`);
+          const compressedFile = await imageCompression(file, options);
+          console.log(`Ukuran setelah kompresi: ${compressedFile.size / 1024} KB`);
+          file = compressedFile; // Ganti file asli dengan file hasil kompresi
+        } catch (compressionError) {
+          console.error("Gagal kompresi, menggunakan file asli:", compressionError);
+        }
+      }
+
+      // Final Check: Jika setelah dikompres (atau jika PDF) tetap > 250KB
+      if (file.size > 250 * 1024) {
+        alert("⚠️ File masih terlalu besar (Maks 250 KB). Silakan gunakan file lain atau perkecil secara manual.");
+        setUploading(false);
+        return;
+      }
+
       const fileExt = file.name.split('.').pop();
-      // Integrasi: Penamaan file menyertakan nama user agar mudah dicari admin
       const cleanName = userName.replace(/\s+/g, '-').toLowerCase();
       const fileName = `${cleanName}-${Date.now()}.${fileExt}`;
       const filePath = `dokumen_pendaftar/${fileName}`;
@@ -45,17 +64,13 @@ export default function SuksesPage() {
 
       if (uploadError) {
         console.error("Detail Error dari Supabase:", uploadError);
-        alert(`Gagal unggah: ${uploadError.message}. Pastikan folder 'dokumen_pendaftar' tersedia.`);
+        alert(`Gagal unggah: ${uploadError.message}`);
         throw uploadError;
       }
 
       console.log("Upload Berhasil:", data);
       setStatus("success");
       setIsCompleted(true); 
-
-      // Efek Suara Sukses (Opsional)
-      const speech = new SpeechSynthesisUtterance("Berkas berhasil diunggah. Pendaftaran Anda selesai.");
-      window.speechSynthesis.speak(speech);
 
     } catch (error) {
       console.error("Terjadi kesalahan:", error);
@@ -67,13 +82,11 @@ export default function SuksesPage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-6 relative overflow-hidden">
-      {/* Dekorasi Latar Belakang agar senada dengan Hero Section */}
       <div className="absolute -top-24 -right-24 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl"></div>
       <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-red-500/5 rounded-full blur-3xl"></div>
 
       <div className="max-w-md w-full bg-white rounded-[3rem] shadow-2xl p-10 text-center border-[12px] border-indigo-50/50 relative z-10 animate-scaleIn">
         
-        {/* Ikon Dinamis dengan Badge User */}
         <div className="flex justify-center mb-6 relative">
           <div className={`p-6 rounded-full transition-all duration-700 ${isCompleted ? 'bg-green-100 scale-110' : 'bg-amber-100 rotate-12'}`}>
             {isCompleted ? (
@@ -95,10 +108,9 @@ export default function SuksesPage() {
         <p className="text-slate-500 font-medium leading-relaxed mb-8 text-sm">
           {isCompleted 
             ? "Luar biasa! Seluruh berkas telah kami terima. Anda kini resmi masuk dalam antrean pembinaan IKM JUARA." 
-            : "Data pendaftaran Anda sudah masuk, namun pendaftaran BELUM VALID. Mohon unggah bukti NIB atau Foto Produk Anda sekarang."}
+            : "Data pendaftaran Anda sudah masuk, namun WAJIB mengunggah Foto KTP Kota Madiun (Otomatis Kompres)."}
         </p>
 
-        {/* BOX UNGGAH */}
         <div className={`rounded-3xl p-6 mb-8 border-2 border-dashed transition-all duration-500 ${isCompleted ? 'bg-emerald-50 border-emerald-200' : 'bg-indigo-50 border-indigo-200 shadow-inner'}`}>
           {!isCompleted ? (
             <div className="flex flex-col items-center">
@@ -107,13 +119,13 @@ export default function SuksesPage() {
                     {uploading ? (
                       <div className="flex flex-col items-center">
                         <Loader2 className="text-indigo-600 animate-spin mb-2" size={32} />
-                        <span className="text-[10px] font-bold text-slate-400 animate-pulse">MEMPROSES FILE...</span>
+                        <span className="text-[10px] font-bold text-slate-400 animate-pulse">MENGOMPRES & MENGUNGGAH...</span>
                       </div>
                     ) : (
                       <>
                         <Upload className="text-indigo-500 mb-2 group-hover:-translate-y-1 transition-transform" size={32} />
                         <span className="text-sm font-black text-indigo-900 uppercase">KLIK UNTUK UNGGAH</span>
-                        <p className="text-[9px] text-slate-400 mt-1 font-bold">PDF / JPG / PNG (Maks 2MB)</p>
+                        <p className="text-[9px] text-slate-400 mt-1 font-bold">PDF / JPG / PNG (Auto-Resize)</p>
                       </>
                     )}
                   </div>
@@ -140,7 +152,6 @@ export default function SuksesPage() {
           )}
         </div>
 
-        {/* Tombol Aksi */}
         <div className="space-y-4">
           {isCompleted ? (
             <Link 
