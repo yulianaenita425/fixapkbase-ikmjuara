@@ -39,9 +39,21 @@ export default function SuksesPage() {
         }
       }
 
-      // 3. Persiapan Path & Nama File di Storage
+// 3. Persiapan Path & Nama File (ANTI-UNDEFINED)
       const fileExt = file.name.split('.').pop();
-      const cleanFileName = savedName.trim().replace(/\s+/g, '-').toLowerCase();
+      
+      // Ambil nama dari localStorage, jika kosong pakai state userName, 
+      // jika masih kosong pakai 'pendaftar-ikm'
+      const rawName = localStorage.getItem("user_name_ikm") || userName || "pendaftar-ikm";
+      
+      // Bersihkan nama dari spasi dan karakter aneh agar aman di URL storage
+      const cleanFileName = rawName
+        .trim()
+        .replace(/\s+/g, '-')     // Ganti spasi dengan strip
+        .replace(/[^a-zA-Z0-9-]/g, '') // Hapus karakter non-alfanumerik
+        .toLowerCase();
+
+      // Hasil akhir: nama-pendaftar-timestamp.jpg
       const fileName = `${cleanFileName}-${Date.now()}.${fileExt}`;
       const filePath = `dokumen_pendaftar/${fileName}`;
 

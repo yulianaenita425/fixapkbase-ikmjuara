@@ -132,23 +132,40 @@ if (data && data.length > 0) {
       created_at: new Date().toISOString(),
     };
 
-    try {
-      const { error: insertError } = await supabase.from("ikm_register").insert([rawData]);
+try {
+      // 1. Mencoba insert pertama dengan .select()
+      const { data, error: insertError } = await supabase.from("ikm_register").insert([rawData]).select();
       
+      let finalData = data; // Variabel penampung hasil
+
       if (insertError) {
         if (insertError.message.includes("jenis_layanan")) {
            const fallbackData = { ...rawData };
            delete (fallbackData as any).jenis_layanan;
-           const { error: retryError } = await supabase.from("ikm_register").insert([fallbackData]);
+           
+           // 2. Jika retry, tambahkan .select() juga di sini agar dapat ID baru
+           const { data: retryData, error: retryError } = await supabase
+             .from("ikm_register")
+             .insert([fallbackData])
+             .select(); 
+             
            if (retryError) throw retryError;
+           finalData = retryData; // Gunakan data hasil retry
         } else {
            throw insertError;
         }
       }
 
+      // Baris 140: Logika Penyimpanan Identitas
+      // Menggunakan finalData agar mencakup hasil insert pertama MAUPUN hasil retry
+      if (finalData && finalData.length > 0) {
+        localStorage.setItem("user_registration_id", finalData[0].id);
+        localStorage.setItem("user_name_ikm", finalData[0].nama_lengkap);
+        console.log("ID & Nama berhasil diamankan:", finalData[0].id);
+      }
+
       await sendEmailNotification(rawData);
-      showNotification("PENDAFTARAN BERHASIL DISIMPAN!"); 
-      
+      showNotification("PENDAFTARAN BERHASIL DISIMPAN!");      
       const msg = new SpeechSynthesisUtterance("Pendaftaran berhasil disimpan. Terima kasih.");
       window.speechSynthesis.speak(msg);
 
