@@ -72,36 +72,44 @@ export default function SuksesPage() {
       
       const publicUrl = publicUrlData.publicUrl;
 
-      // 3. Update Database
-const { error: dbError } = await supabase
-  .from('list_tunggu_peserta')
-  .update({ foto: publicUrl })
-  .match(userId ? { id: userId } : { nama_peserta: userName }) 
-  .order('created_at', { ascending: false })
-  .limit(1);
+      // 3. Update Database (BAGIAN PERBAIKAN SINKRONISASI)
+      const { data: updateResult, error: dbError } = await supabase
+        .from('list_tunggu_peserta')
+        .update({ 
+          foto: publicUrl 
+        })
+        .match(userId ? { id: userId } : {}) // Prioritas pakai ID jika ada
+        .ilike('nama_peserta', userName)     // Gunakan ilike agar tidak sensitif huruf besar/kecil
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .select();
 
-console.log("Hasil Update:", data);
+      // Log untuk pengecekan di Console
+      if (updateResult && updateResult.length > 0) {
+        console.log("Update Berhasil:", updateResult);
+      } else {
+        console.warn("Peringatan: Tidak ada baris data yang cocok untuk diupdate.");
+      }
 
       if (dbError) throw dbError;
 
       // SUKSES: Set Status & Tampilkan Modal
       setIsCompleted(true);
       setStatus("success");
-      setShowModal(true); // <--- Munculkan Pop-up di sini
+      setShowModal(true); 
 
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Error Detail:", error);
       setStatus("error");
-      alert("Terjadi kesalahan teknis. Silakan coba lagi.");
+      alert("Terjadi kesalahan teknis saat mengunggah berkas.");
     } finally {
       setUploading(false);
     }
   };
 
-  // Fungsi untuk handle klik 'Setuju' di Modal
   const handleFinalize = () => {
     setShowModal(false);
-    router.push("/"); // Kembali ke halaman pertama
+    router.push("/"); 
   };
 
   return (
