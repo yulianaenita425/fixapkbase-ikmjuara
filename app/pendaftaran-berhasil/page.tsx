@@ -119,7 +119,7 @@ export default function SuksesPage() {
             </div>
             <h3 className="text-xl font-black text-[#1A1A40] mb-3 text-center uppercase tracking-tighter">Data Berhasil Dikirim!</h3>
             <p className="text-slate-500 text-sm text-center leading-relaxed mb-8 font-medium">
-              Terima kasih, berkas Anda telah tersimpan. Mohon menunggu proses <span className="text-indigo-600 font-bold">verifikasi admin</span> dalam 1x24 jam.
+              Terima kasih, berkas Anda telah tersimpan. Mohon menunggu proses <span className="text-indigo-600 font-bold">verifikasi admin</span>.
             </p>
             <button 
               onClick={handleFinalize}
