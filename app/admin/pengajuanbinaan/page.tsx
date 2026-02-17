@@ -50,12 +50,21 @@ export default function PengajuanBinaan() {
     }
   };
 
-  const deleteData = async (id: string) => {
-    if (confirm("Apakah Anda yakin ingin menghapus data ini secara permanen?")) {
-      const { error } = await supabase.from('ikm_register').delete().eq('id', id);
-      if (!error) fetchData();
+const deleteData = async (id: string) => {
+  if (confirm("Apakah Anda yakin ingin menghapus data ini secara permanen?")) {
+    const { error } = await supabase
+      .from('ikm_register')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error("Gagal menghapus:", error.message);
+      alert("Gagal menghapus data: " + error.message);
+    } else {
+      fetchData();
     }
-  };
+  }
+};
 
   // Filter Logic
   const filteredData = data.filter(item => {
