@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation"; // Import useRouter untuk navigasi
-import { CheckCircle, Home, MessageCircle, Upload, FileText, Loader2, AlertCircle, UserCheck, X } from "lucide-react"; // Perbaikan nama package icons
+import { useRouter } from "next/navigation";
+import { CheckCircle, Home, MessageCircle, Upload, FileText, Loader2, AlertCircle, UserCheck, X } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import imageCompression from "browser-image-compression";
 
@@ -11,7 +11,7 @@ export default function SuksesPage() {
   const router = useRouter();
   const [uploading, setUploading] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
-  const [showModal, setShowModal] = useState(false); // State untuk Pop-up
+  const [showModal, setShowModal] = useState(false);
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
   const [userName, setUserName] = useState("Sobat IKM");
   const [userId, setUserId] = useState<string | null>(null);
@@ -72,28 +72,27 @@ export default function SuksesPage() {
       
       const publicUrl = publicUrlData.publicUrl;
 
-      // 3. Update Database (BAGIAN PERBAIKAN SINKRONISASI)
+      // 3. Update Database - ANTI CASE SENSITIVE
+      // Kita gunakan .ilike agar "ANANG" sama dengan "anang"
       const { data: updateResult, error: dbError } = await supabase
         .from('list_tunggu_peserta')
-        .update({ 
-          foto: publicUrl 
-        })
-        .match(userId ? { id: userId } : {}) // Prioritas pakai ID jika ada
-        .ilike('nama_peserta', userName)     // Gunakan ilike agar tidak sensitif huruf besar/kecil
+        .update({ foto: publicUrl })
+        .ilike('nama_peserta', userName.trim()) // .trim() hapus spasi tak sengaja
         .order('created_at', { ascending: false })
         .limit(1)
         .select();
 
-      // Log untuk pengecekan di Console
-      if (updateResult && updateResult.length > 0) {
-        console.log("Update Berhasil:", updateResult);
-      } else {
-        console.warn("Peringatan: Tidak ada baris data yang cocok untuk diupdate.");
-      }
-
       if (dbError) throw dbError;
 
-      // SUKSES: Set Status & Tampilkan Modal
+      // VALIDASI: Jika updateResult kosong, berarti nama tidak ditemukan di DB
+      if (!updateResult || updateResult.length === 0) {
+        console.warn("Nama tidak cocok di database:", userName);
+        alert("⚠️ Data pendaftaran tidak ditemukan. Pastikan Anda sudah mendaftar sebelumnya.");
+        setUploading(false);
+        return; 
+      }
+
+      // SUKSES: Jika sampai sini, berarti kolom 'foto' PASTI terisi
       setIsCompleted(true);
       setStatus("success");
       setShowModal(true); 
@@ -101,7 +100,7 @@ export default function SuksesPage() {
     } catch (error) {
       console.error("Error Detail:", error);
       setStatus("error");
-      alert("Terjadi kesalahan teknis saat mengunggah berkas.");
+      alert("Terjadi kesalahan teknis. Coba lagi.");
     } finally {
       setUploading(false);
     }
@@ -114,11 +113,9 @@ export default function SuksesPage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-6 relative overflow-hidden font-sans">
-      {/* Background Decorative */}
       <div className="absolute -top-24 -right-24 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl"></div>
       <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-red-500/5 rounded-full blur-3xl"></div>
 
-      {/* MODAL POP-UP (OVERLAY) */}
       {showModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white rounded-[2.5rem] max-w-sm w-full p-8 shadow-2xl relative animate-scaleIn border-[8px] border-indigo-50">
@@ -141,7 +138,6 @@ export default function SuksesPage() {
         </div>
       )}
 
-      {/* MAIN CARD */}
       <div className="max-w-md w-full bg-white rounded-[3rem] shadow-2xl p-10 text-center border-[12px] border-indigo-50/50 relative z-10 animate-scaleIn">
         
         <div className="flex justify-center mb-6 relative">
@@ -168,7 +164,6 @@ export default function SuksesPage() {
             : "Data pendaftaran Anda sudah masuk, namun WAJIB mengunggah Foto KTP Kota Madiun (Otomatis Kompres)."}
         </p>
 
-        {/* Upload Box Area */}
         <div className={`rounded-3xl p-6 mb-8 border-2 border-dashed transition-all duration-500 ${isCompleted ? 'bg-emerald-50 border-emerald-200' : 'bg-indigo-50 border-indigo-200 shadow-inner'}`}>
           {!isCompleted ? (
             <div className="flex flex-col items-center">
@@ -203,7 +198,6 @@ export default function SuksesPage() {
           )}
         </div>
 
-        {/* Action Buttons */}
         <div className="space-y-4">
           {isCompleted ? (
             <button 
