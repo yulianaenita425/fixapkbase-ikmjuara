@@ -490,14 +490,36 @@ export default function IKMJuaraFullPage() {
         </div>
       )}
 
-      <footer className="py-16 text-center bg-white border-t border-slate-100">
-        <blockquote className="text-slate-400 italic text-xl font-serif max-w-2xl mx-auto px-6 mb-8">
-          "Dari Lokal Berkarya, ke Global Berdaya!"
-        </blockquote>
-        <p className="text-xs font-black uppercase tracking-widest text-slate-400">
-          © 2026 DINAS TENAGA KERJA, KOPERASI USAHA KECIL DAN MENENGAH KOTA MADIUN
-        </p>
-      </footer>
+{/* FOOTER */}
+<footer className="py-16 text-center bg-white border-t border-slate-100">
+  <div className="max-w-4xl mx-auto px-6">
+    {/* Section Kutipan / Quote */}
+    <blockquote className="text-slate-400 italic text-xl font-serif max-w-2xl mx-auto mb-8 relative">
+      <span className="text-6xl text-indigo-50 absolute -top-8 -left-4 font-serif pointer-events-none">"</span>
+      Dengan semangat Juara, setiap IKM di Madiun akan menjadi pelaku industri yang tak hanya tumbuh, tapi juga menginspirasi.
+      <p className="mt-2 text-sm font-sans not-italic font-medium text-indigo-400">
+        "Dari Lokal Berkarya, ke Global Berdaya!"
+      </p>
+    </blockquote>
+
+    {/* Link Navigasi Bawah */}
+    <div className="flex justify-center gap-6 text-xs font-black uppercase tracking-[0.2em] text-slate-400 mb-6">
+      <a href="/privacy" className="hover:text-indigo-600 transition-colors">Privacy Policy</a>
+      <span className="text-slate-200">•</span>
+      <a href="/support" className="hover:text-indigo-600 transition-colors">Support Center</a>
+    </div>
+
+    {/* Garis Pemisah Halus */}
+    <div className="w-16 h-px bg-slate-100 mx-auto mb-6"></div>
+
+    {/* Informasi Instansi & Copyright */}
+    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed">
+      © 2026 DINAS TENAGA KERJA, KOPERASI USAHA KECIL DAN MENENGAH KOTA MADIUN
+      <br />
+      <span className="text-slate-300 font-medium mt-1 inline-block">Built with Juara Spirit • E-Government Kota Madiun</span>
+    </p>
+  </div>
+</footer>
     </div>
   );
 }
