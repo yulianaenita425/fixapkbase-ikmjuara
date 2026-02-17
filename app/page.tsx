@@ -143,7 +143,7 @@ export default function IKMJuaraFullPage() {
       const msg = new SpeechSynthesisUtterance("Pendaftaran berhasil disimpan. Terima kasih.");
       window.speechSynthesis.speak(msg);
 
-      setTimeout(() => { window.location.href = '/sukses'; }, 2000);
+      setTimeout(() => { window.location.href = '/pendaftaran-berhasil'; }, 2000);
     } catch (error: any) {
       console.error("Full Error Debug:", error);
       alert("Gagal menyimpan: " + (error.message || "Terjadi kesalahan koneksi"));
