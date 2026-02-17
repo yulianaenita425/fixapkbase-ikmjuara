@@ -4,6 +4,8 @@ import { useState } from "react"
 import { supabase } from "../../lib/supabaseClient"
 import * as XLSX from "xlsx"
 import Link from "next/link"
+import jsPDF from "jspdf"
+import autoTable from "jspdf-autotable"
 
 function DataDetail({ label, value, color = "text-slate-700" }: { label: string, value: string, color?: string }) {
   return (
@@ -32,7 +34,6 @@ export default function PenelusuranIKM() {
     setPelatihan([])
     setShowNotFound(false)
 
-    // --- TAMBAHAN: AMBIL NAMA DARI BUKU TAMU ---
     const savedName = typeof window !== 'undefined' ? localStorage.getItem("user_name_ikm") : null;
     const currentUsername = savedName || 'ANONIM';
 
@@ -46,31 +47,27 @@ export default function PenelusuranIKM() {
 
       if (errIKM) throw errIKM
 
-      // --- LOGIKA PENCATATAN LOG PENCARIAN GAGAL ---
       if (!dataIKM) {
         await supabase.from("activity_logs").insert([{
           role: 'user/public',
-          username: currentUsername, // Menggunakan nama dari Buku Tamu
+          username: currentUsername,
           action_type: 'pencarian',
           description: `Pencarian GAGAL untuk NIB/NIK/Nama: ${cleanQuery}`,
         }]);
-
         setShowNotFound(true)
         setLoading(false)
         return
       }
 
-      // --- LOGIKA PENCATATAN LOG PENCARIAN BERHASIL ---
       await supabase.from("activity_logs").insert([{
         role: 'user/public',
-        username: currentUsername, // Menggunakan nama dari Buku Tamu
+        username: currentUsername,
         action_type: 'pencarian',
         description: `Pencarian BERHASIL untuk: ${dataIKM.nama_lengkap} (NIB: ${dataIKM.no_nib})`,
       }]);
 
       setProfile(dataIKM)
 
-      // Ambil Data Layanan
       const { data: resLayanan, error: errLayanan } = await supabase
         .from("layanan_ikm_juara") 
         .select("jenis_layanan, nomor_dokumen, tahun_fasilitasi, status_sertifikat, link_dokumen, link_tambahan, tanggal_uji") 
@@ -80,7 +77,6 @@ export default function PenelusuranIKM() {
 
       if (!errLayanan) setLayanan(resLayanan || []);
 
-      // Ambil Riwayat Pelatihan Lengkap
       const { data: resPelatihan, error: errPelatihan } = await supabase
         .from("peserta_pelatihan")
         .select(`
@@ -110,36 +106,119 @@ export default function PenelusuranIKM() {
     setSearchQuery(""); setProfile(null); setLayanan([]); setPelatihan([]); setShowNotFound(false);
   }
 
+  // --- FITUR EKSPOR EXCEL (OPTIMAL) ---
   const exportExcel = () => {
     if (!profile) return
     const wb = XLSX.utils.book_new()
-    const dataGabungan = [
+    const dataProfil = [
       ["PROFIL PERSONAL IKM"],
-      ["Nama", profile.nama_lengkap], ["NIB", profile.no_nib], ["Usaha", profile.nama_usaha],
-      [""], ["RIWAYAT LAYANAN"],
-      ["No", "Layanan", "No. Dokumen", "Tahun", "Status"]
+      ["Nama Lengkap", profile.nama_lengkap],
+      ["NIB", profile.no_nib],
+      ["NIK", profile.nik],
+      ["Nama Usaha", profile.nama_usaha],
+      ["WhatsApp", profile.no_hp],
+      ["Alamat", profile.alamat],
+      [""],
     ]
-    layanan.forEach((l, i) => dataGabungan.push([i + 1, l.jenis_layanan, l.nomor_dokumen || "-", l.tahun_fasilitasi || "-", l.status_sertifikat || "-"]))
-    const ws1 = XLSX.utils.aoa_to_sheet(dataGabungan)
-    XLSX.utils.book_append_sheet(wb, ws1, "Profil dan Layanan")
-    XLSX.writeFile(wb, `DATA_IKM_${profile.no_nib}.xlsx`)
+    const dataLayanan = [
+      ["RINCIAN LAYANAN IKM JUARA"],
+      ["No", "Jenis Layanan", "No. Dokumen", "Tahun", "Keterangan Waktu", "Status", "Link Sertifikat"]
+    ]
+    layanan.forEach((l, i) => {
+      dataLayanan.push([
+        i + 1, l.jenis_layanan, l.nomor_dokumen || "-", l.tahun_fasilitasi || "-", 
+        l.tanggal_uji || l.tahun_fasilitasi || "-",
+        l.status_sertifikat || (l.jenis_layanan.toLowerCase().includes('merek') ? "PROSES" : "-"),
+        l.link_dokumen || "-"
+      ])
+    })
+    const dataPelatihan = [
+      [""], ["RIWAYAT PELATIHAN & PEMBERDAYAAN"],
+      ["No", "Nama Kegiatan", "Tahun", "Waktu", "Deskripsi Kegiatan"]
+    ]
+    if (pelatihan.length > 0) {
+      pelatihan.forEach((p, i) => {
+        dataPelatihan.push([i + 1, p.nama_kegiatan, p.tahun_pelaksanaan, p.waktu_pelaksanaan || "-", p.deskripsi_kegiatan || "-"])
+      })
+    } else {
+      dataPelatihan.push(["-", "Belum ada riwayat pelatihan", "-", "-", "-"])
+    }
+    const dataGabungan = [...dataProfil, ...dataLayanan, ...dataPelatihan]
+    const ws = XLSX.utils.aoa_to_sheet(dataGabungan)
+    ws['!cols'] = [{ wch: 5 }, { wch: 35 }, { wch: 25 }, { wch: 10 }, { wch: 20 }, { wch: 15 }, { wch: 45 }];
+    XLSX.utils.book_append_sheet(wb, ws, "Data Lengkap IKM")
+    XLSX.writeFile(wb, `DATA_IKM_LENGKAP_${profile.no_nib}.xlsx`)
+  }
+
+  // --- FITUR BARU: EKSPOR PDF (OPTIMAL) ---
+  const exportPDF = () => {
+    if (!profile) return
+    const doc = new jsPDF()
+    const pageWidth = doc.internal.pageSize.getWidth()
+
+    // Header
+    doc.setFontSize(18); doc.setTextColor(30, 27, 75); doc.setFont("helvetica", "bold")
+    doc.text("KARTU DATA IKM BINAAN", pageWidth / 2, 15, { align: "center" })
+    doc.setFontSize(10); doc.setTextColor(100); doc.setFont("helvetica", "normal")
+    doc.text(`Dicetak pada: ${new Date().toLocaleString('id-ID')}`, pageWidth / 2, 22, { align: "center" })
+    
+    // Section 1: Profil
+    autoTable(doc, {
+      startY: 30,
+      head: [['INFORMASI PROFIL PERSONAL']],
+      body: [
+        ['Nama Lengkap', profile.nama_lengkap],
+        ['NIB / NIK', `${profile.no_nib} / ${profile.nik}`],
+        ['Nama Usaha', profile.nama_usaha],
+        ['WhatsApp', profile.no_hp],
+        ['Alamat', profile.alamat]
+      ],
+      theme: 'plain',
+      styles: { fontSize: 9, cellPadding: 2 },
+      headStyles: { fillColor: [30, 27, 75], textColor: [255, 255, 255], fontStyle: 'bold' }
+    })
+
+    // Section 2: Layanan
+    doc.setFontSize(11); doc.setTextColor(30, 27, 75); doc.setFont("helvetica", "bold")
+    doc.text("RINCIAN LAYANAN FASILITASI", 14, (doc as any).lastAutoTable.finalY + 10)
+    autoTable(doc, {
+      startY: (doc as any).lastAutoTable.finalY + 15,
+      head: [['No', 'Jenis Layanan', 'Nomor Dokumen', 'Tahun', 'Status']],
+      body: layanan.map((l, i) => [
+        i + 1, l.jenis_layanan, l.nomor_dokumen || "-", l.tahun_fasilitasi || "-", l.status_sertifikat || (l.jenis_layanan.toLowerCase().includes('merek') ? "PROSES" : "-")
+      ]),
+      headStyles: { fillColor: [79, 70, 229] },
+      styles: { fontSize: 8 }
+    })
+
+    // Section 3: Pelatihan
+    doc.setFontSize(11); doc.setFont("helvetica", "bold")
+    doc.text("RIWAYAT PELATIHAN & PEMBERDAYAAN", 14, (doc as any).lastAutoTable.finalY + 10)
+    autoTable(doc, {
+      startY: (doc as any).lastAutoTable.finalY + 15,
+      head: [['No', 'Nama Kegiatan', 'Tahun', 'Waktu']],
+      body: pelatihan.length > 0 
+        ? pelatihan.map((p, i) => [i + 1, p.nama_kegiatan, p.tahun_pelaksanaan, p.waktu_pelaksanaan || "-"])
+        : [['-', 'Belum ada riwayat pelatihan', '-', '-']],
+      headStyles: { fillColor: [5, 150, 105] },
+      styles: { fontSize: 8 }
+    })
+
+    doc.save(`KARTU_DATA_IKM_${profile.no_nib}.pdf`)
   }
 
   return (
     <div className="flex flex-col min-h-screen bg-[#F1F5F9] font-sans text-slate-900">
       <main className="flex-grow p-4 md:p-8">
         <div className="max-w-6xl mx-auto bg-indigo-950 p-8 md:p-12 rounded-[40px] shadow-2xl mb-8 border-b-[10px] border-indigo-600">
-          
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
             <h1 className="text-3xl font-black text-white italic uppercase tracking-tighter flex items-center gap-3">
               <span className="text-4xl">🔎</span> PENELUSURAN DATA IKM
             </h1>
-            
             <Link href="/" className="bg-white/10 hover:bg-white/20 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all border border-white/20 flex items-center gap-2 w-fit">
               🏠 Beranda Utama
             </Link>
           </div>
-
           <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4">
             <input 
               value={searchQuery}
@@ -159,7 +238,8 @@ export default function PenelusuranIKM() {
         {profile && (
           <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex justify-end gap-3">
-              <button onClick={exportExcel} className="bg-emerald-500 text-white px-6 py-3 rounded-xl font-black text-xs uppercase shadow-md hover:bg-emerald-600 transition-all">📊 EXCEL</button>
+              <button onClick={exportPDF} className="bg-rose-500 text-white px-6 py-3 rounded-xl font-black text-xs uppercase shadow-md hover:bg-rose-600 transition-all flex items-center gap-2">📑 CETAK PDF</button>
+              <button onClick={exportExcel} className="bg-emerald-500 text-white px-6 py-3 rounded-xl font-black text-xs uppercase shadow-md hover:bg-emerald-600 transition-all flex items-center gap-2">📊 EXCEL</button>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -249,33 +329,18 @@ export default function PenelusuranIKM() {
           </div>
         )}
 
-        {/* MODAL NOT FOUND INTERAKTIF */}
         {showNotFound && (
           <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-indigo-950/80 backdrop-blur-sm animate-in fade-in duration-300">
             <div className="bg-white w-full max-w-md rounded-[40px] overflow-hidden shadow-2xl border-b-[10px] border-rose-500 animate-in zoom-in-95 duration-300">
               <div className="p-10 text-center">
                 <div className="text-6xl mb-6 animate-bounce">🙏</div>
-                <h3 className="text-2xl font-black text-indigo-950 uppercase leading-tight mb-4">
-                  Mohon Maaf
-                </h3>
+                <h3 className="text-2xl font-black text-indigo-950 uppercase leading-tight mb-4">Mohon Maaf</h3>
                 <p className="text-slate-600 font-medium leading-relaxed mb-8">
-                  Data IKM yang ditelusuri <span className="text-rose-600 font-bold">belum tercatat</span> pada Sistem IKM Juara / belum menjadi IKM Binaan kami.
+                  Data IKM yang ditelusuri <span className="text-rose-600 font-bold">belum tercatat</span> pada Sistem IKM Juara.
                 </p>
-                
                 <div className="flex flex-col gap-3">
-                  <Link 
-                    href="/#form-pendaftaran" 
-                    className="bg-emerald-500 hover:bg-emerald-600 text-white p-5 rounded-2xl font-black uppercase tracking-wide transition-all shadow-lg active:scale-95 text-sm"
-                  >
-                    📝 Ajukan Menjadi IKM Binaan
-                  </Link>
-                  
-                  <button 
-                    onClick={() => setShowNotFound(false)}
-                    className="text-slate-400 font-black uppercase text-[10px] tracking-widest hover:text-rose-500 transition-colors"
-                  >
-                    Coba NIK/NIB Lain
-                  </button>
+                  <Link href="/#form-pendaftaran" className="bg-emerald-500 hover:bg-emerald-600 text-white p-5 rounded-2xl font-black uppercase tracking-wide transition-all shadow-lg active:scale-95 text-sm text-center">📝 Ajukan Menjadi IKM Binaan</Link>
+                  <button onClick={() => setShowNotFound(false)} className="text-slate-400 font-black uppercase text-[10px] tracking-widest hover:text-rose-500 transition-colors">Coba NIK/NIB Lain</button>
                 </div>
               </div>
             </div>
@@ -289,9 +354,7 @@ export default function PenelusuranIKM() {
           <span className="text-slate-200">•</span>
           <a href="/support" className="hover:text-indigo-600 transition-colors">Support</a>
         </div>
-        <p className="mt-4 text-[10px] text-slate-300 font-bold uppercase tracking-widest">
-          IKM JUARA SYSTEM V2.0
-        </p>
+        <p className="mt-4 text-[10px] text-slate-300 font-bold uppercase tracking-widest">IKM JUARA SYSTEM V2.0</p>
       </footer>
     </div>
   )
