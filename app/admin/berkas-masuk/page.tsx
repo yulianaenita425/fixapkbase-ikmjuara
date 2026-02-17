@@ -3,13 +3,10 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 import { 
-  Users, 
-  FileCheck, 
   ExternalLink, 
   Search, 
   RefreshCcw, 
   Trash2,
-  CheckCircle2,
   Clock,
   ChevronRight,
   Loader2,
@@ -82,9 +79,9 @@ export default function BerkasMasukPage() {
     <div className="min-h-screen bg-[#F1F5F9] p-6 lg:p-12">
       <div className="max-w-7xl mx-auto">
         
-        {/* BREADCRUMB & TITLE */}
+        {/* BREADCRUMB & TITLE SECTION */}
         <div className="mb-10">
-          <div className="flex items-center gap-2 text-slate-400 text-xs font-bold uppercase tracking-widest mb-2">
+          <div className="flex items-center gap-2 text-slate-500 text-xs font-bold uppercase tracking-widest mb-2">
             <span>Admin</span>
             <ChevronRight size={12} />
             <span className="text-indigo-600">Berkas Masuk</span>
@@ -145,13 +142,13 @@ export default function BerkasMasukPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
-                {/* OPTIMASI: Latar belakang header digelapkan sedikit dan warna text diubah ke slate-600 agar terlihat */}
-                <tr className="bg-slate-100/80 border-b border-slate-200">
-                  <th className="p-6 text-[11px] font-black text-slate-600 uppercase tracking-[0.2em]">Profil Pendaftar</th>
-                  <th className="p-6 text-[11px] font-black text-slate-600 uppercase tracking-[0.2em]">Informasi Bisnis</th>
-                  <th className="p-6 text-[11px] font-black text-slate-600 uppercase tracking-[0.2em]">Pelatihan</th>
-                  <th className="p-6 text-[11px] font-black text-slate-600 uppercase tracking-[0.2em]">Status</th>
-                  <th className="p-6 text-[11px] font-black text-slate-600 uppercase tracking-[0.2em] text-center">Tindakan</th>
+                {/* HEADER: Menggunakan slate-700 agar teks judul kolom sangat jelas terbaca */}
+                <tr className="bg-slate-100 border-b border-slate-200">
+                  <th className="p-6 text-[11px] font-black text-slate-700 uppercase tracking-[0.2em]">Profil Pendaftar</th>
+                  <th className="p-6 text-[11px] font-black text-slate-700 uppercase tracking-[0.2em]">Informasi Bisnis</th>
+                  <th className="p-6 text-[11px] font-black text-slate-700 uppercase tracking-[0.2em]">Pelatihan</th>
+                  <th className="p-6 text-[11px] font-black text-slate-700 uppercase tracking-[0.2em]">Status</th>
+                  <th className="p-6 text-[11px] font-black text-slate-700 uppercase tracking-[0.2em] text-center">Tindakan</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -185,7 +182,7 @@ export default function BerkasMasukPage() {
                       <td className="p-6">
                         <p className="text-sm font-black text-slate-700 uppercase tracking-tight mb-1">{item.nama_usaha}</p>
                         <span className="px-3 py-1 bg-amber-100 text-[9px] font-black text-amber-700 rounded-lg uppercase">
-                          {item.produk_utama}
+                          {item.produk_ut || item.produk_utama || "N/A"}
                         </span>
                       </td>
                       <td className="p-6">
@@ -199,14 +196,14 @@ export default function BerkasMasukPage() {
                       </td>
                       <td className="p-6">
                         <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${
-                          item.status === 'Terverifikasi' ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'
+                          item.status?.toLowerCase() === 'terverifikasi' ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'
                         }`}>
-                          {item.status || 'Menunggu'}
+                          {item.status || 'Pending'}
                         </span>
                       </td>
                       <td className="p-6">
                         <div className="flex justify-center gap-2">
-                          {/* TOMBOL WHATSAPP */}
+                          {/* TOMBOL WA */}
                           <a 
                             href={`https://wa.me/${item.no_hp?.replace(/^0/, '62')}`}
                             target="_blank"
@@ -217,7 +214,7 @@ export default function BerkasMasukPage() {
                             <ExternalLink size={18} />
                           </a>
                           
-                          {/* OPTIMASI TOMBOL BERKAS: Sekarang memberikan feedback jika diklik saat data kosong */}
+                          {/* LOGIKA TOMBOL BERKAS DENGAN FEEDBACK */}
                           {item.foto ? (
                             <a 
                               href={item.foto} 
@@ -230,7 +227,7 @@ export default function BerkasMasukPage() {
                             </a>
                           ) : (
                             <button 
-                              onClick={() => alert("Peserta ini belum mengunggah file berkas/foto.")}
+                              onClick={() => alert("Kolom 'foto' tidak ditemukan di database atau kosong. Silakan tambah kolom 'foto' di Supabase.")}
                               className="p-3 bg-slate-50 text-slate-300 border border-slate-100 rounded-xl cursor-help"
                               title="Berkas Tidak Tersedia"
                             >
@@ -256,6 +253,7 @@ export default function BerkasMasukPage() {
           </div>
         </div>
 
+        {/* SYSTEM FOOTER */}
         <div className="mt-8 flex justify-between items-center px-6">
             <p className="text-[10px] font-black text-slate-400 tracking-[0.3em] uppercase">E-Government System v1.0</p>
             <div className="flex items-center gap-2">
