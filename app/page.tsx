@@ -46,6 +46,10 @@ export default function IKMJuaraFullPage() {
           .eq('is_published', true); 
 
         if (error) throw error;
+
+localStorage.setItem("user_registration_id", data[0].id);
+localStorage.setItem("user_name_ikm", data[0].nama_peserta);
+
         if (data) setDaftarPelatihan(data);
       } catch (error: any) {
         console.error("Error fetching pelatihan:", error.message);

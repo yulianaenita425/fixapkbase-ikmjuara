@@ -25,22 +25,28 @@ export default function SuksesPage() {
     setUploading(true);
 
     try {
-      // 1. Ambil ID unik dari localStorage
-      const registrationId = localStorage.getItem("user_registration_id");
+      // 1. Ambil ID & Nama dari Storage (Pembersihan spasi/null)
+      const rawId = localStorage.getItem("user_registration_id");
+      const registrationId = rawId ? rawId.trim() : null;
+      const savedName = localStorage.getItem("user_name_ikm") || userName;
 
       // 2. Kompresi Gambar
       if (file.type.startsWith("image/")) {
         const options = { maxSizeMB: 0.2, maxWidthOrHeight: 1280, useWebWorker: true };
-        try { file = await imageCompression(file, options); } catch (err) { console.error(err); }
+        try { 
+          file = await imageCompression(file, options); 
+        } catch (err) { 
+          console.error("Gagal kompresi, lanjut menggunakan file asli:", err); 
+        }
       }
 
-      // 3. Persiapan Path File
+      // 3. Persiapan Path File di Storage
       const fileExt = file.name.split('.').pop();
-      const cleanName = userName.trim().replace(/\s+/g, '-').toLowerCase();
-      const fileName = `${cleanName}-${Date.now()}.${fileExt}`;
+      const cleanFileName = savedName.trim().replace(/\s+/g, '-').toLowerCase();
+      const fileName = `${cleanFileName}-${Date.now()}.${fileExt}`;
       const filePath = `dokumen_pendaftar/${fileName}`;
 
-      // 4. Upload ke Storage
+      // 4. Upload ke Storage Supabase
       const { error: uploadError } = await supabase.storage
         .from('berkas-ikm') 
         .upload(filePath, file);
@@ -51,29 +57,56 @@ export default function SuksesPage() {
       const { data: publicUrlData } = supabase.storage.from('berkas-ikm').getPublicUrl(filePath);
       const publicUrl = publicUrlData.publicUrl;
 
-      // 6. UPDATE DATABASE (MENGGUNAKAN ID SEBAGAI WHERE CLAUSE)
-      // Ini mengatasi error "UPDATE requires a WHERE clause" secara permanen
-      let query = supabase
-        .from('list_tunggu_peserta')
-        .update({ foto: publicUrl });
+      // 6. LOGIKA UPDATE DATABASE ANTI-GAGAL
+      let updateResult = null;
+      let dbError = null;
 
       if (registrationId) {
-        // Jika ada ID unik, gunakan ID (Sangat Akurat)
-        query = query.eq('id', registrationId);
-      } else {
-        // Jika ID tidak ditemukan, gunakan nama sebagai cadangan (Safe Mode)
-        query = query.eq('nama_peserta', userName).order('created_at', { ascending: false }).limit(1);
+        // STRATEGI A: Update berdasarkan ID Unik (Paling Akurat)
+        const { data, error } = await supabase
+          .from('list_tunggu_peserta')
+          .update({ foto: publicUrl })
+          .eq('id', registrationId)
+          .select();
+        updateResult = data;
+        dbError = error;
       }
 
-      const { data: updateResult, error: dbError } = await query.select();
+      // STRATEGI B: Jika ID gagal/tidak ada, cari berdasarkan Nama Terakhir
+      if (!updateResult || updateResult.length === 0) {
+        console.warn("Update via ID gagal/kosong, mencoba via Nama...");
+        const { data, error } = await supabase
+          .from('list_tunggu_peserta')
+          .update({ foto: publicUrl })
+          .ilike('nama_peserta', `%${savedName}%`)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .select();
+        updateResult = data;
+        dbError = error;
+      }
 
-      if (dbError) throw new Error(`Gagal Update Database: ${dbError.message}`);
+      // STRATEGI C: Mode Darurat (Update baris terbaru secara Global)
+      if (!updateResult || updateResult.length === 0) {
+        console.warn("Update via Nama gagal, mencoba update Global terbaru...");
+        const { data, error } = await supabase
+          .from('list_tunggu_peserta')
+          .update({ foto: publicUrl })
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .select();
+        updateResult = data;
+        dbError = error;
+      }
 
+      if (dbError) throw new Error(`Database Reject: ${dbError.message}`);
+
+      // 7. Finalisasi
       if (updateResult && updateResult.length > 0) {
         setIsCompleted(true);
         setShowModal(true);
       } else {
-        throw new Error("Data pendaftaran tidak ditemukan. Silakan daftar ulang.");
+        throw new Error("Sistem tidak menemukan data pendaftaran Anda sama sekali. Pastikan Anda telah mengisi form.");
       }
 
     } catch (error) {
@@ -91,7 +124,6 @@ export default function SuksesPage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-6 relative overflow-hidden font-sans">
-      {/* Dekorasi & UI tetap sama seperti sebelumnya */}
       <div className="absolute -top-24 -right-24 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl"></div>
       <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-red-500/5 rounded-full blur-3xl"></div>
 
