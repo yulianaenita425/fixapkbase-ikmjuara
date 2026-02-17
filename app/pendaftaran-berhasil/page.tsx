@@ -76,9 +76,11 @@ export default function SuksesPage() {
 const { error: dbError } = await supabase
   .from('list_tunggu_peserta')
   .update({ foto: publicUrl })
-  .match(userId ? { id: userId } : { nama_peserta: userName }) // Cari pake ID, kalo gaada baru Nama
+  .match(userId ? { id: userId } : { nama_peserta: userName }) 
   .order('created_at', { ascending: false })
   .limit(1);
+
+console.log("Hasil Update:", data);
 
       if (dbError) throw dbError;
 
