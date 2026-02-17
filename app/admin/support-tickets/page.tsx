@@ -130,23 +130,41 @@ const AdminDashboard = () => {
   const handleUpdateStatus = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setUpdating(true);
-    const formData = new FormData(e.currentTarget);
     
-    const { error } = await supabase
-      .from('support_tickets')
-      .update({
-        status: formData.get('status'),
-        admin_update: formData.get('admin_update'),
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', selectedTicket.id);
+    // Mengambil data dari form
+    const formData = new FormData(e.currentTarget);
+    const newStatus = formData.get('status')?.toString();
+    const newAdminUpdate = formData.get('admin_update')?.toString();
 
-    if (!error) {
-      await fetchTickets();
-      setSelectedTicket(null);
-      alert("Tiket berhasil diperbarui!");
+    try {
+      // Pastikan selectedTicket.id ada sebelum eksekusi
+      if (!selectedTicket?.id) throw new Error("ID Tiket tidak ditemukan.");
+
+      const { error } = await supabase
+        .from('support_tickets')
+        .update({
+          status: newStatus,
+          admin_update: newAdminUpdate,
+          // Menggunakan format ISO String yang didukung timestamptz Supabase
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', selectedTicket.id);
+
+      if (error) {
+        // Log detail error ke console untuk debugging
+        console.error("Supabase Error Details:", error);
+        alert(`Gagal memperbarui: ${error.message}`);
+      } else {
+        await fetchTickets();
+        setSelectedTicket(null);
+        alert("Tiket berhasil diperbarui!");
+      }
+    } catch (err: any) {
+      console.error("Client Error:", err);
+      alert(err.message || "Terjadi kesalahan sistem.");
+    } finally {
+      setUpdating(false);
     }
-    setUpdating(false);
   };
 
   return (
