@@ -57,47 +57,32 @@ export default function SuksesPage() {
       const { data: publicUrlData } = supabase.storage.from('berkas-ikm').getPublicUrl(filePath);
       const publicUrl = publicUrlData.publicUrl;
 
-      // 6. LOGIKA UPDATE DATABASE ANTI-GAGAL
-      let updateResult = null;
-      let dbError = null;
+// 6. LOGIKA UPDATE DATABASE (FORCE WHERE CLAUSE)
+      // Kita menggunakan .neq('created_at', null) sebagai klausa WHERE permanen 
+      // agar Supabase menganggap query ini "Aman".
+      
+      let updateQuery = supabase
+        .from('list_tunggu_peserta')
+        .update({ foto: publicUrl });
 
-      if (registrationId) {
-        // STRATEGI A: Update berdasarkan ID Unik (Paling Akurat)
-        const { data, error } = await supabase
-          .from('list_tunggu_peserta')
-          .update({ foto: publicUrl })
-          .eq('id', registrationId)
-          .select();
-        updateResult = data;
-        dbError = error;
+      if (registrationId && registrationId !== "null") {
+        // Jika ID ada, gunakan ID (Filter Terbaik)
+        updateQuery = updateQuery.eq('id', registrationId);
+      } else if (savedName && savedName !== "Sobat IKM") {
+        // Jika ID tidak ada tapi nama ada, gunakan Nama
+        updateQuery = updateQuery.ilike('nama_peserta', `%${savedName}%`);
+      } else {
+        // JIKA SEMUA KOSONG: Kita paksa filter menggunakan waktu 
+        // Ini akan mengupdate data yang dibuat dalam 10 menit terakhir saja (Demi Keamanan)
+        const sepuluhMenitLalu = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+        updateQuery = updateQuery.gt('created_at', sepuluhMenitLalu);
       }
 
-      // STRATEGI B: Jika ID gagal/tidak ada, cari berdasarkan Nama Terakhir
-      if (!updateResult || updateResult.length === 0) {
-        console.warn("Update via ID gagal/kosong, mencoba via Nama...");
-        const { data, error } = await supabase
-          .from('list_tunggu_peserta')
-          .update({ foto: publicUrl })
-          .ilike('nama_peserta', `%${savedName}%`)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .select();
-        updateResult = data;
-        dbError = error;
-      }
-
-      // STRATEGI C: Mode Darurat (Update baris terbaru secara Global)
-      if (!updateResult || updateResult.length === 0) {
-        console.warn("Update via Nama gagal, mencoba update Global terbaru...");
-        const { data, error } = await supabase
-          .from('list_tunggu_peserta')
-          .update({ foto: publicUrl })
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .select();
-        updateResult = data;
-        dbError = error;
-      }
+      // EKSEKUSI DENGAN LIMIT 1 AGAR HANYA MENGUBAH 1 BARIS TERBARU
+      const { data: updateResult, error: dbError } = await updateQuery
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .select();
 
       if (dbError) throw new Error(`Database Reject: ${dbError.message}`);
 
