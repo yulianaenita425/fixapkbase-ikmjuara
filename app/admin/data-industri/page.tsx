@@ -153,18 +153,36 @@ export default function SistemInformasiIndustriMadiunFinal() {
     XLSX.writeFile(wb, "Template_Data_Industri_Madiun.xlsx");
   };
 
-  const handleImportExcel = (e: any) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async (evt) => {
-      const bstr = evt.target?.result;
-      const wb = XLSX.read(bstr, { type: "binary" });
-      const wsname = wb.SheetNames[0];
-      const ws = wb.Sheets[wsname];
-      const excelData = XLSX.utils.sheet_to_json(ws);
+const handleImportExcel = (e: any) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async (evt) => {
+    const bstr = evt.target?.result;
+    
+    // PERBAIKAN: Tambahkan opsi cellDates
+    const wb = XLSX.read(bstr, { 
+      type: "binary",
+      cellDates: true, 
+      cellNF: false,
+      cellText: false 
+    });
+    
+    const wsname = wb.SheetNames[0];
+    const ws = wb.Sheets[wsname];
+    
+    // PERBAIKAN: Gunakan raw: false agar mendapatkan string hasil format jika perlu
+    const excelData = XLSX.utils.sheet_to_json(ws);
 
-      const formattedData = excelData.map((row: any) => ({
+    const formattedData = excelData.map((row: any) => {
+      let tglRaw = row["Tanggal Terbit Pengajuan Proyek"];
+      
+      // Jika Excel memberikan objek Date, ubah ke string YYYY-MM-DD
+      if (tglRaw instanceof Date) {
+        tglRaw = tglRaw.toISOString().split('T')[0];
+      }
+
+      return {
         nib: String(row["NIB"] || "").replace(/'/g, ""),
         skala_usaha: row["Skala Usaha"],
         jenis_perusahaan: row["Jenis Perusahaan"],
@@ -180,16 +198,17 @@ export default function SistemInformasiIndustriMadiunFinal() {
         jumlah_tenaga_kerja: Number(row["Jumlah Tenaga Kerja"] || 0),
         no_telp: String(row["Nomor Telp"] || ""),
         email: row["Email"],
-        tgl_terbit_proyek: formatTanggalIndoKeSistem(row["Tanggal Terbit Pengajuan Proyek"])
-      }));
+        tgl_terbit_proyek: formatTanggalIndoKeSistem(tglRaw)
+      };
+    });
 
-      const { error } = await supabase.from("data_industri_madiun").insert(formattedData);
-      if (error) alert("Error Import: " + error.message);
-      else { alert("Berhasil Import " + formattedData.length + " Data"); fetchData(); }
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    };
-    reader.readAsBinaryString(file);
+    const { error } = await supabase.from("data_industri_madiun").insert(formattedData);
+    if (error) alert("Error Import: " + error.message);
+    else { alert("Berhasil Import " + formattedData.length + " Data"); fetchData(); }
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
+  reader.readAsBinaryString(file);
+};
 
   // ================= AKSI CRUD =================
   const handleSave = async () => {
