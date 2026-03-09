@@ -54,23 +54,26 @@ export default function SistemInformasiIndustriMadiunFinal() {
   }
   const [form, setForm] = useState(initialState)
 
-  const fetchData = useCallback(async () => {
-    setLoading(true)
-    const { data: res } = await supabase
-      .from("data_industri_madiun")
-      .select("*")
-      .eq("is_deleted", false)
-      .order("tgl_terbit_proyek", { ascending: false });
-      .range(0, 2000); // Menarik data dari baris ke-0 sampai ke-2000
+const fetchData = useCallback(async () => {
+  setLoading(true);
+  
+  // Perbaikan: Ambil data sekaligus dengan variabel error yang benar
+  const { data: res, error } = await supabase
+    .from("data_industri_madiun")
+    .select("*")
+    .eq("is_deleted", false)
+    .order("tgl_terbit_proyek", { ascending: false })
+    .range(0, 2000); // Batas pengambilan data hingga 2000 baris
 
-   if (error) {
-    console.error("Error fetching data:", error)
+  if (error) {
+    console.error("Error fetching data:", error);
+    alert("Gagal mengambil data: " + error.message);
   } else {
-    setData(res || [])
+    setData(res || []);
   }
   
-  setLoading(false)
-}, [])
+  setLoading(false);
+}, []);
 
   useEffect(() => { fetchData() }, [fetchData])
 
