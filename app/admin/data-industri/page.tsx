@@ -58,9 +58,16 @@ export default function SistemInformasiIndustriMadiunFinal() {
       .select("*")
       .eq("is_deleted", false)
       .order("tgl_terbit_proyek", { ascending: false });
+      .range(0, 2000); // Menarik data dari baris ke-0 sampai ke-2000
+
+   if (error) {
+    console.error("Error fetching data:", error)
+  } else {
     setData(res || [])
-    setLoading(false)
-  }, [])
+  }
+  
+  setLoading(false)
+}, [])
 
   useEffect(() => { fetchData() }, [fetchData])
 
@@ -224,20 +231,32 @@ const handleImportExcel = (e: any) => {
     setForm(initialState); setEditId(null); setShowForm(false); fetchData();
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm("Hapus data ini?")) {
-      await supabase.from("data_industri_madiun").update({ is_deleted: true }).eq("id", id);
-      fetchData();
-    }
-  };
+const handleDelete = async (id: string) => {
+  if (confirm("Hapus permanen data ini dari database?")) {
+    const { error } = await supabase
+      .from("data_industri_madiun")
+      .delete() // Menghapus baris secara permanen
+      .eq("id", id);
+      
+    if (error) alert(error.message);
+    else fetchData();
+  }
+};
 
-  const handleBulkDelete = async () => {
-    if (confirm(`Hapus ${selectedIds.length} data terpilih?`)) {
-      await supabase.from("data_industri_madiun").update({ is_deleted: true }).in("id", selectedIds);
+const handleBulkDelete = async () => {
+  if (confirm(`Hapus permanen ${selectedIds.length} data terpilih?`)) {
+    const { error } = await supabase
+      .from("data_industri_madiun")
+      .delete() // Menghapus banyak baris sekaligus
+      .in("id", selectedIds);
+      
+    if (error) alert(error.message);
+    else {
       setSelectedIds([]);
       fetchData();
     }
-  };
+  }
+};
 
   return (
     <div className="p-6 bg-slate-50 min-h-screen font-sans text-slate-900">
