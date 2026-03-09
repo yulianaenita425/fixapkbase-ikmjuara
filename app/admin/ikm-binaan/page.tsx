@@ -11,13 +11,16 @@ export default function IKMPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const rowsPerPage = 5
 
+  // State Baru untuk Checkbox
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+
   // State untuk Modal Import Custom
   const [importSummary, setImportSummary] = useState<{
     show: boolean;
     dataBaru: any[];
     dataDuplikat: any[];
     isLoading: boolean;
-    showDuplicateList: boolean; // Fitur baru: toggle list ganda
+    showDuplicateList: boolean;
   }>({
     show: false,
     dataBaru: [],
@@ -55,7 +58,23 @@ export default function IKMPage() {
   useEffect(() => {
     fetchData();
     setCurrentPage(1);
+    setSelectedIds([]); // Reset pilihan saat pindah tab
   }, [fetchData]);
+
+  // ================= LOGIKA CHECKBOX =================
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === paginatedData.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(paginatedData.map(item => item.id));
+    }
+  };
 
   // ================= VALIDASI & DUPLICATE =================
   const checkDuplicate = async (column: string, value: string) => {
@@ -114,6 +133,28 @@ export default function IKMPage() {
     if (!error) { fetchData(); await saveLog(`Menghapus permanen IKM: ${nama}`, "hapus"); }
   };
 
+  // Fitur Baru: Aksi Massal
+  const handleBulkDelete = async () => {
+    if (!confirm(`Hapus permanen ${selectedIds.length} data yang dipilih?`)) return;
+    const { error } = await supabase.from("ikm_binaan").delete().in("id", selectedIds);
+    if (!error) {
+      alert("Data berhasil dihapus permanen! 💀");
+      await saveLog(`Menghapus massal ${selectedIds.length} data IKM`, "hapus");
+      setSelectedIds([]);
+      fetchData();
+    }
+  };
+
+  const handleBulkRestore = async () => {
+    const { error } = await supabase.from("ikm_binaan").update({ is_deleted: false, deleted_at: null }).in("id", selectedIds);
+    if (!error) {
+      alert("Data berhasil dipulihkan! 🔄");
+      await saveLog(`Memulihkan massal ${selectedIds.length} data IKM`, "edit");
+      setSelectedIds([]);
+      fetchData();
+    }
+  };
+
   const handleUpdate = async () => {
     if (!editData) return
     const payload = { no_nib: editData.no_nib, nik: editData.nik, nama_lengkap: editData.nama_lengkap, nama_usaha: editData.nama_usaha, alamat: editData.alamat, no_hp: editData.no_hp }
@@ -121,7 +162,7 @@ export default function IKMPage() {
     if (!error) { setEditData(null); fetchData(); await saveLog(`Update data IKM: ${editData.nama_usaha}`, "edit"); }
   };
 
-  // ================= EXCEL LOGIC (WITH DUPLICATE VIEWER) =================
+  // ================= EXCEL LOGIC =================
   const downloadTemplate = () => {
     const template = [{ no_nib: "", nik: "", nama_lengkap: "", nama_usaha: "", alamat: "", no_hp: "" }];
     const worksheet = XLSX.utils.json_to_sheet(template);
@@ -229,7 +270,6 @@ export default function IKMPage() {
                 </div>
               </div>
 
-              {/* Fitur Intip Data Ganda */}
               {importSummary.dataDuplikat.length > 0 && (
                 <div className="mb-6">
                    <button 
@@ -349,11 +389,38 @@ export default function IKMPage() {
         </div>
       </div>
 
+      {/* MODAL AKSI MASSAL (Hanya muncul jika ada yang dipilih) */}
+      {activeTab === "recycle" && selectedIds.length > 0 && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-2xl flex justify-between items-center animate-in fade-in slide-in-from-top-2">
+          <span className="text-sm font-bold text-red-700">
+            📍 {selectedIds.length} data terpilih di sampah
+          </span>
+          <div className="flex gap-2">
+            <button onClick={handleBulkRestore} className="px-4 py-2 bg-green-600 text-white rounded-xl text-xs font-bold shadow-sm hover:bg-green-700 transition">
+              🔄 Pulihkan Semua
+            </button>
+            <button onClick={handleBulkDelete} className="px-4 py-2 bg-red-600 text-white rounded-xl text-xs font-bold shadow-sm hover:bg-red-700 transition">
+              💀 Hapus Permanen Semua
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Table */}
       <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
         <table className="w-full text-sm">
           <thead>
             <tr className={`${activeTab === "main" ? "bg-gray-100 text-gray-700" : "bg-red-50 text-red-700"} border-b font-bold`}>
+              {activeTab === "recycle" && (
+                <th className="p-4 text-center">
+                  <input 
+                    type="checkbox" 
+                    onChange={toggleSelectAll} 
+                    checked={selectedIds.length === paginatedData.length && paginatedData.length > 0}
+                    className="w-4 h-4 cursor-pointer"
+                  />
+                </th>
+              )}
               <th className="p-4 text-center">No</th>
               <th className="p-4 text-left">Identitas</th>
               <th className="p-4 text-left">Nama Pemilik / Usaha</th>
@@ -364,11 +431,21 @@ export default function IKMPage() {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {paginatedData.length > 0 ? paginatedData.map((item, index) => (
-              <tr key={item.id} className="hover:bg-gray-50 transition-colors">
+              <tr key={item.id} className={`hover:bg-gray-50 transition-colors ${selectedIds.includes(item.id) ? 'bg-blue-50/50' : ''}`}>
+                {activeTab === "recycle" && (
+                  <td className="p-4 text-center">
+                    <input 
+                      type="checkbox" 
+                      checked={selectedIds.includes(item.id)} 
+                      onChange={() => toggleSelect(item.id)}
+                      className="w-4 h-4 cursor-pointer"
+                    />
+                  </td>
+                )}
                 <td className="p-4 text-center text-gray-400">{(currentPage - 1) * rowsPerPage + index + 1}</td>
                 <td className="p-4">
-                   <div className="text-xs text-blue-600 font-bold">NIB: {item.no_nib}</div>
-                   <div className="text-[10px] text-gray-400">NIK: {item.nik}</div>
+                    <div className="text-xs text-blue-600 font-bold">NIB: {item.no_nib}</div>
+                    <div className="text-[10px] text-gray-400">NIK: {item.nik}</div>
                 </td>
                 <td className="p-4">
                   <div className="font-semibold">{item.nama_lengkap}</div>
@@ -393,7 +470,7 @@ export default function IKMPage() {
                 </td>
               </tr>
             )) : (
-              <tr><td colSpan={6} className="p-10 text-center text-gray-400 italic">Tidak ada data ditemukan</td></tr>
+              <tr><td colSpan={activeTab === "recycle" ? 7 : 6} className="p-10 text-center text-gray-400 italic">Tidak ada data ditemukan</td></tr>
             )}
           </tbody>
         </table>
