@@ -250,7 +250,7 @@ const handleBulkDelete = async () => {
   if (confirm(`Hapus permanen ${selectedIds.length} data terpilih?`)) {
     const { error } = await supabase
       .from("data_industri_madiun")
-      .delete() // Menghapus banyak baris sekaligus
+      .delete() 
       .in("id", selectedIds);
       
     if (error) alert(error.message);
